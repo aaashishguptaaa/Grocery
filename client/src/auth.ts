@@ -6,7 +6,13 @@ import bcrypt from "bcryptjs"
 import Google from "next-auth/providers/google"
  
 
+// Prevent NextAuth from using localhost AUTH_URL on Vercel
+if (process.env.VERCEL && process.env.AUTH_URL?.includes("localhost")) {
+  delete process.env.AUTH_URL
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
         credentials: {
