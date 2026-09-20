@@ -1,0 +1,97 @@
+/* ── Google Fonts (Inter) — must be first ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #f8fafc;
+}
+
+/* ── Hide scrollbars (keep scrolling functional) ── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Skeleton shimmer ── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 0.75rem;
+}
+
+/* ── Smooth page transitions ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+
+/* ── Scroll rail (no visible scrollbar) ── */
+.scroll-rail {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-rail::-webkit-scrollbar { display: none; }
+.scroll-rail > * { scroll-snap-align: start; }
+
+/* ── Focus ring ── */
+*:focus-visible { outline: 2px solid #16a34a; outline-offset: 2px; border-radius: 0.5rem; }
+
+/* ── GPU-Accelerated Falling Groceries (Zero-Lag 60fps) ── */
+@keyframes fallNormal {
+  0% {
+    transform: translate3d(0, -15vh, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, 50vh, 0) rotate(180deg);
+  }
+  100% {
+    transform: translate3d(0, 115vh, 0) rotate(360deg);
+  }
+}
+
+@keyframes fallSwayLeft {
+  0% {
+    transform: translate3d(0, -15vh, 0) rotate(0deg);
+  }
+  35% {
+    transform: translate3d(-18px, 35vh, 0) rotate(-90deg);
+  }
+  70% {
+    transform: translate3d(12px, 75vh, 0) rotate(-180deg);
+  }
+  100% {
+    transform: translate3d(0, 115vh, 0) rotate(-360deg);
+  }
+}
+
+@keyframes fallSwayRight {
+  0% {
+    transform: translate3d(0, -15vh, 0) rotate(0deg);
+  }
+  35% {
+    transform: translate3d(18px, 35vh, 0) rotate(90deg);
+  }
+  70% {
+    transform: translate3d(-12px, 75vh, 0) rotate(180deg);
+  }
+  100% {
+    transform: translate3d(0, 115vh, 0) rotate(360deg);
+  }
+}
