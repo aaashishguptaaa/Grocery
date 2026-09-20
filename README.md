@@ -1,119 +1,81 @@
-# 🛒 Snapcart - Full-Stack 10-Minute Grocery Delivery Platform
+# 🛒 Snapcart — Modern 10-Minute Grocery Delivery Platform
 
-[![Vercel Deployment](https://img.shields.io/badge/Vercel-Live%20App-black?style=for-the-badge&logo=vercel)](https://grocery-beta-livid.vercel.app)
-[![Render WebSocket](https://img.shields.io/badge/Render-Live%20Socket-46E3B7?style=for-the-badge&logo=render)](https://grocery-socket.onrender.com)
-[![Next.js](https://img.shields.io/badge/Next.js%2016-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Live Application](https://img.shields.io/badge/🚀%20Live%20Demo-grocery--beta--livid.vercel.app-16a34a?style=for-the-badge)](https://grocery-beta-livid.vercel.app)
+[![WebSocket Server](https://img.shields.io/badge/⚡%20WebSocket%20Live-Render%20Cloud-46E3B7?style=for-the-badge&logo=render)](https://grocery-socket.onrender.com)
+[![Next.js 16](https://img.shields.io/badge/Next.js%2016-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB%20Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Google Gemini AI](https://img.shields.io/badge/Google%20Gemini%20AI-8E75B2?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Razorpay](https://img.shields.io/badge/Razorpay-Payments-02042B?style=for-the-badge&logo=razorpay&logoColor=3395FF)](https://razorpay.com/)
+
+> **Snapcart** is an end-to-end, full-stack 10-minute grocery delivery web application engineered with modern web technologies, real-time bi-directional WebSocket communication, AI-powered recipe intelligence, multi-role security, and an interactive admin sales analytics system.
 
 ---
 
-## 🌐 Live URLs
+## 🔗 Live Application Links
 
-* 🚀 **Web Application**: [https://grocery-beta-livid.vercel.app](https://grocery-beta-livid.vercel.app)
-* ⚡ **Realtime WebSocket Server**: [https://grocery-socket.onrender.com](https://grocery-socket.onrender.com)
-
----
-
-## ✨ Features
-
-### 🛍️ Customer Experience
-* **Instant Category & Product Browsing**: Real-time stock status, search, and category filtering.
-* **🤖 AI Recipe-to-Cart**: Powered by Google Gemini AI — enter any recipe name or craving, and instantly generate the ingredients list and add them directly to your cart with one click.
-* **💳 Flexible Checkout**: Integrated with **Razorpay** payment gateway for instant digital payments as well as Cash on Delivery (COD).
-* **📍 Live Order & Delivery Tracking**: Interactive map powered by Leaflet and WebSockets to track delivery partners in real time from pickup to doorstep.
-* **💬 Real-Time Customer Support Chat**: Live driver-to-customer and admin-to-customer messaging powered by Socket.IO.
-
-### 🛵 Delivery Partner Portal
-* **Live GPS Location Broadcasting**: Automatically sends live coordinate updates to the customer and admin map.
-* **Order Assignment & Acceptance**: Seamlessly accept assignments and update delivery milestones.
-* **Delivery Verification**: OTP verification system on delivery completion.
-* **Earnings & Performance Dashboard**: Track completed trips, delivery tips, and daily earnings.
-
-### 👑 Store Administration & Analytics
-* **📅 Delivered Products & Sales Calendar**: Interactive date-by-date calendar dashboard displaying daily, weekly, and monthly sales volume, revenue breakdown, and delivered product logs with print/CSV export.
-* **📦 Product Catalog Management**: Add, edit, toggle stock, or delete grocery products with image hosting on Cloudinary.
-* **👥 Multi-Role Staff & User Management**: Promote or manage store roles across Admins, Delivery Partners, and Customers.
-* **📊 Live Order Pipeline**: Monitor orders through `pending`, `processing`, `out_for_delivery`, and `delivered`.
+* 🌐 **Production Website**: [https://grocery-beta-livid.vercel.app](https://grocery-beta-livid.vercel.app)
+* ⚡ **Production WebSocket Engine**: [https://grocery-socket.onrender.com](https://grocery-socket.onrender.com)
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## 💡 What I Built
 
-```
-Grocery/
-├── client/          # Next.js 16 App Router (Frontend + API Routes)
-│   ├── src/
-│   │   ├── app/     # App Router pages and REST API handlers
-│   │   ├── components/ # Reusable UI components & Dashboards
-│   │   ├── lib/     # MongoDB connection & shared utilities
-│   │   ├── models/  # Mongoose Data Models
-│   │   └── auth.ts  # NextAuth v5 (Auth.js) configuration
-│   └── package.json
-└── socketServer/    # Standalone Node.js WebSocket Service
-    ├── index.js     # Express + Socket.IO server
-    └── package.json
-```
+Snapcart is divided into three comprehensive, interconnected portals:
 
-* **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Framer Motion, Lucide Icons
-* **Authentication**: NextAuth v5 (Google OAuth + Credentials), JWT Session handling
-* **Database**: MongoDB Atlas via Mongoose
-* **Real-time Engine**: Socket.IO (WebSocket)
-* **Cloud & Media**: Cloudinary (Image storage)
-* **Payment Processing**: Razorpay Gateway
-* **AI Engine**: Google Gemini API
-* **Deployment**: Vercel (Next.js client) & Render (Socket server)
+### 1. 🛍️ Customer Experience Portal
+* **Dynamic Product Catalog**: Real-time category browsing, keyword search, price calculations, and live stock-level indicators.
+* **🤖 AI Recipe-to-Cart Engine**: Integrated with **Google Gemini AI**. Users can type any meal, craving, or recipe name, and the AI automatically analyzes the recipe, extracts the exact grocery items required, and enables adding all ingredients directly to the cart with one click.
+* **💳 Complete Digital & COD Checkout**: Seamless payment processing powered by **Razorpay** (UPI, credit/debit cards, net banking) alongside a **Cash on Delivery (COD)** option.
+* **📍 Live Order & GPS Driver Tracking**: Live map interface using Leaflet and WebSockets to track the assigned delivery partner's coordinates in real time from dispatch to delivery.
+* **💬 Real-Time Customer Support**: Direct in-app live messaging between customer, delivery partner, and store support.
 
 ---
 
-## 🚀 Local Development Setup
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/aaashishguptaaa/Grocery.git
-cd Grocery
-```
-
-### 2. Configure Environment Variables
-Inside `client/`, create a `.env.local` file:
-```env
-MONGODB_URL="your-mongodb-atlas-connection-string"
-AUTH_SECRET="your-nextauth-secret"
-AUTH_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID="your-google-oauth-client-id"
-GOOGLE_CLIENT_SECRET="your-google-oauth-client-secret"
-CLOUDINARY_CLOUD_NAME="your-cloudinary-name"
-CLOUDINARY_API_KEY="your-cloudinary-api-key"
-CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
-RAZORPAY_KEY_ID="your-razorpay-key-id"
-RAZORPAY_KEY_SECRET="your-razorpay-key-secret"
-NEXT_PUBLIC_SOCKET_SERVER="http://localhost:4000"
-GEMINI_API_KEY="your-gemini-api-key"
-```
-
-Inside `socketServer/`, create a `.env` file:
-```env
-PORT=4000
-NEXT_BASE_URL="http://localhost:3000"
-```
-
-### 3. Run the Next.js Client
-```bash
-cd client
-npm install
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### 4. Run the Socket Server (in a separate terminal)
-```bash
-cd socketServer
-npm install
-npm start
-```
+### 2. 🛵 Delivery Partner Logistics System
+* **Live GPS Location Broadcasting**: Automatically transmits real-time latitude/longitude coordinates to the customer and store admin via Socket.IO.
+* **Order Assignment & Workflow Management**: Dedicated partner dashboard to accept incoming deliveries, view delivery addresses, customer contact details, and navigate routes.
+* **Secure Delivery OTP Verification**: One-Time-Password verification to ensure verified, tamper-proof delivery handoffs.
+* **Partner Earnings & Performance**: Live metrics tracking completed orders, daily earnings, and tip totals.
 
 ---
 
-## 📜 License
-This project is open source and available under the [ISC License](LICENSE).
+### 3. 👑 Store Administration & Business Intelligence
+* **📅 Delivered Products & Sales Calendar**: An interactive calendar dashboard displaying date-wise delivery counts, daily/weekly/monthly revenue totals, average order value, and complete delivered item logs with one-click **CSV export** and **print reports**.
+* **📦 Inventory & Product Catalog Management**: Full CRUD capabilities to create new grocery items, edit details, toggle instant stock availability, and delete products, backed by Cloudinary image processing.
+* **👥 Multi-Role Staff & User Control**: Secure role management allowing owners to assign and adjust permissions between **Admins**, **Delivery Partners**, and **Customers**.
+* **📊 Real-Time Order Management**: Centralized order pipeline to inspect orders across all statuses (`pending`, `processing`, `out_for_delivery`, and `delivered`).
+
+---
+
+## 🛠️ Technologies & Tools Used
+
+### 🎨 Frontend & User Interface
+* **Next.js 16 (App Router)** — Modern React framework with Server Components and dynamic routing
+* **React 19** — Latest component architecture and hooks
+* **TypeScript** — Strictly typed codebase for high reliability and maintainability
+* **Tailwind CSS** — Custom responsive design system with fluid layout styling
+* **Framer Motion** — Smooth page transitions and micro-interactions
+* **Lucide React** — Minimalist vector iconography
+
+### ⚙️ Backend & APIs
+* **Next.js Server Actions & API Routes** — High-performance serverless backend handlers
+* **Node.js & Express** — Lightweight runtime powering the standalone real-time service
+* **Socket.IO** — Ultra-low latency, bi-directional WebSocket communication for live GPS streaming and chat
+
+### 🗄️ Database & Storage
+* **MongoDB Atlas** — Scalable cloud NoSQL database
+* **Mongoose ODM** — Schema modeling with data validation and indexing
+* **Cloudinary** — Cloud storage, optimization, and CDN delivery for product imagery
+
+### 🔐 Authentication & Security
+* **NextAuth v5 (Auth.js)** — Modern authentication system
+* **Google OAuth 2.0** — One-click social login
+* **bcryptjs** — Salted password hashing
+* **JWT & Role-Based Access Control (RBAC)** — Route protection for Customer, Delivery Partner, and Admin roles
+
+### 💳 Integrations & Cloud Infrastructure
+* **Google Gemini AI API** — GenAI recipe ingredient parsing and cart automation
+* **Razorpay Payment Gateway** — Secure digital transaction handling
+* **Vercel** — Automated CI/CD deployment and global CDN hosting for the web application
+* **Render** — 24/7 cloud container hosting for the persistent Socket.IO WebSocket server
