@@ -7,12 +7,30 @@ import axios from "axios"
 dotenv.config()
 const app = express()
 app.use(express.json())
+
+// Health check endpoint
+app.get("/", (req, res) => {
+    res.json({ status: "ok", message: "Snapcart Socket Server is running" })
+})
+
 const server = http.createServer(app)
 const port = process.env.PORT || 4000
 
+const allowedOrigins = [
+    "http://localhost:3000",
+    "https://grocery-beta-livid.vercel.app",
+    process.env.NEXT_BASE_URL
+].filter(Boolean)
+
 const io = new Server(server, {
     cors: {
-        origin: process.env.NEXT_BASE_URL || "http://localhost:3000",
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true)
+            if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+                return callback(null, true)
+            }
+            return callback(null, true)
+        },
         methods: ["GET", "POST"]
     }
 })
