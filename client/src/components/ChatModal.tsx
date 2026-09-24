@@ -288,12 +288,12 @@ export default function ChatModal({
                         </div>
                     </div>
 
-                    {/* Delivery OTP Notice Banner (if out for delivery) */}
-                    {deliveryOtp && (
+                    {/* Delivery OTP Notice Banner (STRICTLY for CUSTOMER only, never for delivery rider) */}
+                    {deliveryOtp && currentUser?.role === "user" && (
                         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs shrink-0">
                             <span className="font-bold text-amber-900 flex items-center gap-1.5">
                                 <KeyRound size={14} className="text-amber-600" />
-                                <span>Delivery OTP:</span>
+                                <span>Your Delivery OTP (Share with rider upon arrival):</span>
                             </span>
                             <span className="font-mono font-black text-emerald-700 bg-white px-3 py-0.5 rounded-lg border border-amber-300 tracking-widest text-sm">
                                 {deliveryOtp}

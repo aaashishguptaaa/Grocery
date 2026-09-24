@@ -724,7 +724,7 @@ export default function AdminOrderCard({
                     orderId={order._id}
                     currentUser={{
                         _id: "admin",
-                        name: "Snapcart Store Support",
+                        name: "Grocery Store Support",
                         role: "admin"
                     }}
                 />

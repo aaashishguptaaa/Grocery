@@ -264,8 +264,7 @@ export default function DeliveryBoyDashboard({
                 setActiveOrders(prev => prev.map(o => o._id === data.orderId ? {
                     ...o,
                     status: "out of delivery",
-                    handoverConfirmed: true,
-                    deliveryOtp: data.deliveryOtp || o.deliveryOtp
+                    handoverConfirmed: true
                 } : o))
             }
         }
@@ -1049,7 +1048,7 @@ export default function DeliveryBoyDashboard({
                                     className="w-48 mx-auto py-3 text-center text-2xl font-black tracking-widest bg-gray-50 border-2 border-green-500 rounded-2xl focus:ring-4 focus:ring-green-100 outline-none"
                                     autoFocus
                                 />
-                                <p className="text-[11px] text-gray-400">Ask the customer for the 4-digit code shown on their Snapcart screen.</p>
+                                <p className="text-[11px] text-gray-400">Ask the customer for the 4-digit code shown on their Grocery screen.</p>
                             </div>
 
                             {/* Action Buttons: Confirm vs Cancel */}
@@ -1218,7 +1217,6 @@ export default function DeliveryBoyDashboard({
                     partnerPhone={chatOrder.address?.mobile || chatOrder.user?.mobile}
                     orderId={chatOrder._id}
                     currentUser={{ _id: user?._id || user?.id, name: user?.name, role: 'deliveryBoy' }}
-                    deliveryOtp={chatOrder.deliveryOtp}
                 />
             )}
         </div>
