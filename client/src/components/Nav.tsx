@@ -34,10 +34,15 @@ export default function Nav({ user }: { user: IUser }) {
     const [menuOpen, setMenuOpen] = useState(false)
     const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
     const [adminUnreadChats, setAdminUnreadChats] = useState(0)
+    const [customerUnreadChats, setCustomerUnreadChats] = useState(0)
     const [mounted, setMounted] = useState(false)
 
     // Chat Modal configuration
     const [chatModalConfig, setChatModalConfig] = useState<any>({ isOpen: false })
+    const chatModalConfigRef = useRef<any>(chatModalConfig)
+    useEffect(() => {
+        chatModalConfigRef.current = chatModalConfig
+    }, [chatModalConfig])
 
     // Customer Delivery Notifications (Strictly out of delivery & doorstep alerts)
     const [activeDeliveries, setActiveDeliveries] = useState<any[]>([])
@@ -104,6 +109,56 @@ export default function Nav({ user }: { user: IUser }) {
         } catch (e) {}
     }
 
+    // Pleasant dual-chime notification sound for customer messages
+    const playChatNotificationChime = () => {
+        try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+            if (!AudioCtx) return
+            const ctx = new AudioCtx()
+
+            // Note 1 (E5 - 659.25Hz)
+            const osc1 = ctx.createOscillator()
+            const gain1 = ctx.createGain()
+            osc1.type = "sine"
+            osc1.frequency.setValueAtTime(659.25, ctx.currentTime)
+            gain1.gain.setValueAtTime(0.25, ctx.currentTime)
+            gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35)
+            osc1.connect(gain1)
+            gain1.connect(ctx.destination)
+            osc1.start(ctx.currentTime)
+            osc1.stop(ctx.currentTime + 0.35)
+
+            // Note 2 (A5 - 880Hz) - slight delay for a cheerful ding-ding
+            const osc2 = ctx.createOscillator()
+            const gain2 = ctx.createGain()
+            osc2.type = "sine"
+            osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.12)
+            gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.12)
+            gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+            osc2.connect(gain2)
+            gain2.connect(ctx.destination)
+            osc2.start(ctx.currentTime + 0.12)
+            osc2.stop(ctx.currentTime + 0.6)
+        } catch (e) {}
+    }
+
+    // Open store chat for customer and clear notification badge
+    const handleOpenCustomerStoreChat = () => {
+        if (!user?._id) return
+        const targetRoom = `store_user_${user._id}`
+        setCustomerUnreadChats(0)
+        axios.post('/api/chat/unread', { roomId: targetRoom, senderRole: 'admin' }).catch(() => {})
+        setChatModalConfig({
+            isOpen: true,
+            roomId: targetRoom,
+            title: "Central Mart Store",
+            subtitle: "Chat with Shop Owner & Grocery Support",
+            partnerRole: "admin",
+            partnerName: "Shop Owner (Central Mart)",
+            currentUser: { _id: user._id, name: user.name, role: user.role }
+        })
+    }
+
     const cartState = useSelector((state: RootState) => state.cart)
     const cartData = cartState?.cartData || []
 
@@ -132,19 +187,86 @@ export default function Nav({ user }: { user: IUser }) {
         } catch (e) {}
     }
 
+    // Fetch unread customer chat count from store admin
+    const fetchCustomerUnreadChatCount = async () => {
+        if (!user?._id) return
+        try {
+            const res = await axios.get(`/api/chat/unread?roomId=store_user_${user._id}&senderRole=admin`)
+            if (typeof res.data?.unreadCount === 'number') {
+                setCustomerUnreadChats(res.data.unreadCount)
+            }
+        } catch (e) {}
+    }
+
     useEffect(() => {
         if (user?.role === "user") {
             fetchActiveOrders()
-            const interval = setInterval(fetchActiveOrders, 10000)
+            fetchCustomerUnreadChatCount()
+            const interval = setInterval(() => {
+                fetchActiveOrders()
+                fetchCustomerUnreadChatCount()
+            }, 8000)
             return () => clearInterval(interval)
         }
     }, [user])
 
-    // Global real-time socket delivery updates
+    // Global real-time socket delivery & store chat updates
     useEffect(() => {
         if (user?.role !== "user") return
         const socket = getSocket()
         if (!socket) return
+
+        const customerRoomId = `store_user_${user._id}`
+        if (user?._id) {
+            socket.emit("identity", user._id)
+            socket.emit("join-room", customerRoomId)
+        }
+
+        const processedMsgIds = new Set<string>()
+
+        const handleIncomingChatForCustomer = (msg: any) => {
+            if (!msg || !msg.roomId || msg.roomId !== customerRoomId) return
+            // Only process messages from admin / store support
+            if (msg.senderRole !== "admin") return
+
+            // Deduplicate if both send-message and admin-store-message fire
+            const msgKey = msg._id || `${msg.time}_${msg.text}`
+            if (processedMsgIds.has(msgKey)) return
+            processedMsgIds.add(msgKey)
+
+            // Play notification popup sound chime!
+            playChatNotificationChime()
+
+            // If the chat modal is currently open for this room, mark read immediately
+            if (chatModalConfigRef.current?.isOpen && chatModalConfigRef.current?.roomId === customerRoomId) {
+                axios.post('/api/chat/unread', { roomId: customerRoomId, senderRole: 'admin' }).catch(() => {})
+                return
+            }
+
+            // Increment unread chat counter badge
+            setCustomerUnreadChats(prev => prev + 1)
+
+            // Show toast notification with direct click-to-open
+            toast((t) => (
+                <div 
+                    onClick={() => {
+                        toast.dismiss(t.id)
+                        handleOpenCustomerStoreChat()
+                    }}
+                    className="flex items-center gap-3 cursor-pointer py-1"
+                >
+                    <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center text-green-700 font-bold shrink-0">
+                        <Store size={18} />
+                    </div>
+                    <div className="overflow-hidden">
+                        <p className="text-xs font-bold text-gray-800">
+                            💬 Central Mart Store: <span className="font-normal text-gray-600 truncate">{msg.text}</span>
+                        </p>
+                        <p className="text-[10px] text-green-600 font-bold mt-0.5">Click to view & reply</p>
+                    </div>
+                </div>
+            ), { duration: 6000, position: 'top-right' })
+        }
 
         const handleDispatched = (data: any) => {
             if (data?.orderId) {
@@ -190,11 +312,15 @@ export default function Nav({ user }: { user: IUser }) {
         socket.on('order-dispatched', handleDispatched)
         socket.on('rider-at-doorstep', handleAtDoorstep)
         socket.on('order-delivered', handleDelivered)
+        socket.on('send-message', handleIncomingChatForCustomer)
+        socket.on('admin-store-message', handleIncomingChatForCustomer)
 
         return () => {
             socket.off('order-dispatched', handleDispatched)
             socket.off('rider-at-doorstep', handleAtDoorstep)
             socket.off('order-delivered', handleDelivered)
+            socket.off('send-message', handleIncomingChatForCustomer)
+            socket.off('admin-store-message', handleIncomingChatForCustomer)
         }
     }, [user])
 
@@ -483,20 +609,24 @@ export default function Nav({ user }: { user: IUser }) {
                         {user.role === "user" && user?._id && (
                             <button
                                 type="button"
-                                onClick={() => setChatModalConfig({
-                                    isOpen: true,
-                                    roomId: `store_user_${user._id}`,
-                                    title: "Central Mart Store",
-                                    subtitle: "Chat with Shop Owner & Grocery Support",
-                                    partnerRole: "admin",
-                                    partnerName: "Shop Owner (Central Mart)",
-                                    currentUser: { _id: user._id, name: user.name, role: user.role }
-                                })}
-                                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white px-2.5 sm:px-3 py-1.5 rounded-xl transition font-semibold text-xs cursor-pointer active:scale-95"
+                                onClick={handleOpenCustomerStoreChat}
+                                className="relative flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white px-2.5 sm:px-3 py-1.5 rounded-xl transition font-semibold text-xs cursor-pointer active:scale-95"
                                 title="Chat with Store Owner"
                             >
-                                <MessageSquare size={16} />
+                                <div className="relative flex items-center justify-center">
+                                    <MessageSquare size={16} />
+                                    {customerUnreadChats > 0 && (
+                                        <span className="absolute -top-2 -right-2.5 bg-red-500 text-white text-[9px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-green-700 shadow-md animate-pulse">
+                                            {customerUnreadChats}
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="hidden sm:inline">Store Chat</span>
+                                {customerUnreadChats > 0 && (
+                                    <span className="bg-amber-400 text-green-950 text-[10px] font-black px-1.5 py-0.2 rounded-full ml-0.5 animate-pulse">
+                                        {customerUnreadChats}
+                                    </span>
+                                )}
                             </button>
                         )}
 
@@ -1029,18 +1159,17 @@ export default function Nav({ user }: { user: IUser }) {
                         {/* Store Chat (Chat with Shop Owner) */}
                         {user?._id && (
                             <button
-                                onClick={() => setChatModalConfig({
-                                    isOpen: true,
-                                    roomId: `store_user_${user._id}`,
-                                    title: "Central Mart Store",
-                                    subtitle: "Chat with Shop Owner & Grocery Support",
-                                    partnerRole: "admin",
-                                    partnerName: "Shop Owner (Central Mart)",
-                                    currentUser: { _id: user._id, name: user.name, role: user.role }
-                                })}
-                                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition text-gray-400 hover:text-green-600 cursor-pointer"
+                                onClick={handleOpenCustomerStoreChat}
+                                className="relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition text-gray-400 hover:text-green-600 cursor-pointer"
                             >
-                                <MessageSquare size={22} />
+                                <div className="relative flex items-center justify-center">
+                                    <MessageSquare size={22} />
+                                    {customerUnreadChats > 0 && (
+                                        <span className="absolute -top-1 -right-2.5 bg-red-500 text-white text-[8px] font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center border border-white shadow-sm animate-pulse">
+                                            {customerUnreadChats}
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="text-[10px] font-semibold">Store Chat</span>
                             </button>
                         )}
@@ -1091,6 +1220,7 @@ export default function Nav({ user }: { user: IUser }) {
                     orderId={chatModalConfig.orderId}
                     currentUser={chatModalConfig.currentUser || { _id: user._id, name: user.name, role: user.role }}
                     deliveryOtp={chatModalConfig.deliveryOtp}
+                    onMessagesRead={() => setCustomerUnreadChats(0)}
                 />
             )}
 

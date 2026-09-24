@@ -13,10 +13,16 @@ export async function POST(req: NextRequest) {
 
         const role = senderRole || "user";
 
-        // If admin replies, mark all previous customer messages in this room as read
+        // If admin replies, mark all previous customer messages in this room as read for admin
         if (role === "admin") {
             await Message.updateMany(
                 { roomId: String(roomId), senderRole: { $ne: "admin" } },
+                { $set: { isRead: true } }
+            );
+        } else if (role === "user") {
+            // If customer sends a message, mark previous admin messages in this room as read
+            await Message.updateMany(
+                { roomId: String(roomId), senderRole: "admin" },
                 { $set: { isRead: true } }
             );
         }
@@ -25,10 +31,10 @@ export async function POST(req: NextRequest) {
             senderId: senderId || null,
             text: String(text).trim(),
             roomId: String(roomId),
-            senderName: senderName || (role === "admin" ? "Snapcart Store Support" : "User"),
+            senderName: senderName || (role === "admin" ? "Grocery Store Support" : "User"),
             senderRole: role,
             time: time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            isRead: role === "admin" // admin messages don't count as unread customer messages
+            isRead: false
         });
 
         return NextResponse.json(message, { status: 200 });

@@ -23,6 +23,7 @@ export interface ChatModalProps {
         role?: string
     }
     deliveryOtp?: string
+    onMessagesRead?: () => void
 }
 
 export default function ChatModal({
@@ -36,7 +37,8 @@ export default function ChatModal({
     partnerPhone,
     orderId,
     currentUser,
-    deliveryOtp
+    deliveryOtp,
+    onMessagesRead
 }: ChatModalProps) {
     const [messages, setMessages] = useState<any[]>([])
     const [newMessage, setNewMessage] = useState('')
@@ -76,7 +78,7 @@ export default function ChatModal({
         }
         if (currentUser?.role === 'admin') {
             return [
-                "👋 Hello! Snapcart Central Mart at your service",
+                "👋 Hello! Grocery Central Mart at your service",
                 "🏪 We are hand-packing fresh groceries for you now",
                 "🛵 Your order is ready and being assigned to a rider",
                 "✓ Checking with the store inventory right now",
@@ -112,6 +114,12 @@ export default function ChatModal({
                 if (isSubscribed) setLoadingMessages(false)
             })
 
+        // Mark incoming unread messages as read for this room
+        if (roomId && partnerRole) {
+            axios.post('/api/chat/unread', { roomId, senderRole: partnerRole }).catch(() => {})
+            onMessagesRead?.()
+        }
+
         // Join socket room
         const socket = getSocket()
         if (socket) {
@@ -125,6 +133,11 @@ export default function ChatModal({
                         return [...prev, msg]
                     })
                     scrollToBottom()
+                    // Immediately mark as read since user is actively viewing this room
+                    if (partnerRole) {
+                        axios.post('/api/chat/unread', { roomId, senderRole: partnerRole }).catch(() => {})
+                        onMessagesRead?.()
+                    }
                 }
             }
 
@@ -138,7 +151,7 @@ export default function ChatModal({
         return () => {
             isSubscribed = false
         }
-    }, [isOpen, roomId])
+    }, [isOpen, roomId, partnerRole])
 
     useEffect(() => {
         scrollToBottom()
