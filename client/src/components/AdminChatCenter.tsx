@@ -466,9 +466,9 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-100 shadow-xs">
                     <div className="flex items-center gap-3">
                         <Link 
-                            href="/admin/manage-orders" 
+                            href="/" 
                             className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition"
-                            title="Back to Orders"
+                            title="Back to Dashboard"
                         >
                             <ArrowLeft size={18} />
                         </Link>
