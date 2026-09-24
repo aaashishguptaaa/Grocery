@@ -28,6 +28,21 @@ export async function POST(req:NextRequest){
             {status:400}
         )
        }
+
+       if (role === "deliveryBoy") {
+           try {
+               const emitEventHandler = (await import("@/lib/emitEventHandler")).default;
+               await emitEventHandler("new-delivery-partner-registered", {
+                   userId: user._id,
+                   name: user.name,
+                   email: user.email,
+                   mobile: user.mobile,
+               });
+           } catch (e) {
+               console.error("Socket emit failed:", e);
+           }
+       }
+
        return NextResponse.json(
             user,
             {status:200}

@@ -10,6 +10,11 @@ async function AdminDashboard() {
   const orders=await Order.find({})
   const users=await User.find({role:"user"})
   const groceries=await Grocery.find({})
+  const pendingDeliveryBoys = await User.find({
+      role: "deliveryBoy",
+      isApproved: { $ne: true },
+      isBanned: { $ne: true }
+  }).select("name email mobile createdAt").sort({ createdAt: -1 })
 
   const totalOrders=orders.length
   const totalCustomers=users.length
@@ -71,6 +76,7 @@ const sevenDaysRevenue=sevenDaysOrders.reduce((sum,o)=>sum+(o.totalAmount || 0),
     }}
      stats={stats}
      chartData={chartData}
+     pendingDeliveryBoys={JSON.parse(JSON.stringify(pendingDeliveryBoys))}
     />
     </>
   )

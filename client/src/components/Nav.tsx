@@ -34,6 +34,7 @@ export default function Nav({ user }: { user: IUser }) {
     const [menuOpen, setMenuOpen] = useState(false)
     const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
     const [adminUnreadChats, setAdminUnreadChats] = useState(0)
+    const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
     const [customerUnreadChats, setCustomerUnreadChats] = useState(0)
     const [mounted, setMounted] = useState(false)
 
@@ -328,9 +329,10 @@ export default function Nav({ user }: { user: IUser }) {
         if (user?.role === "admin") {
             const fetchAdminData = async () => {
                 try {
-                    const [ordersRes, chatsRes] = await Promise.all([
+                    const [ordersRes, chatsRes, approvalsRes] = await Promise.all([
                         axios.get('/api/admin/get-orders').catch(() => ({ data: [] })),
-                        axios.get('/api/admin/chat-conversations').catch(() => ({ data: [] }))
+                        axios.get('/api/admin/chat-conversations').catch(() => ({ data: [] })),
+                        axios.get('/api/admin/pending-approvals').catch(() => ({ data: { count: 0 } }))
                     ])
                     if (Array.isArray(ordersRes.data)) {
                         setPendingOrdersCount(ordersRes.data.filter((o: any) => o.status === "pending").length)
@@ -339,11 +341,14 @@ export default function Nav({ user }: { user: IUser }) {
                         const unread = chatsRes.data.reduce((sum: number, c: any) => sum + (Number(c.unreadCount) || 0), 0)
                         setAdminUnreadChats(unread)
                     }
+                    if (typeof approvalsRes.data?.count === 'number') {
+                        setPendingApprovalsCount(approvalsRes.data.count)
+                    }
                 } catch (e) { console.log(e) }
             }
 
             fetchAdminData()
-            const interval = setInterval(fetchAdminData, 8000)
+            const interval = setInterval(fetchAdminData, 6000)
 
             const socket = getSocket()
             if (socket) {
@@ -381,16 +386,55 @@ export default function Nav({ user }: { user: IUser }) {
                     }
                 }
 
+                const handleDeliveryRegistration = (data: any) => {
+                    playDoorbellChime()
+                    setPendingApprovalsCount(prev => prev + 1)
+                    toast((t) => (
+                        <div 
+                            onClick={() => {
+                                toast.dismiss(t.id)
+                                router.push('/admin/manage-users')
+                            }}
+                            className="flex items-center gap-3 cursor-pointer py-1"
+                        >
+                            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl shrink-0 shadow-xs">
+                                🛵
+                            </div>
+                            <div className="overflow-hidden">
+                                <p className="text-xs font-black text-gray-800">
+                                    🛵 New Delivery Partner Applied!
+                                </p>
+                                <p className="text-[11px] text-gray-600 truncate mt-0.5">
+                                    <b>{data.name || 'Applicant'}</b> is awaiting your verification.
+                                </p>
+                                <p className="text-[10px] text-amber-600 font-black mt-0.5">Click to review & approve</p>
+                            </div>
+                        </div>
+                    ), { duration: 9000, position: 'top-right' })
+                }
+
+                const handleApprovalChanged = () => {
+                    axios.get('/api/admin/pending-approvals').then(res => {
+                        if (typeof res.data?.count === 'number') {
+                            setPendingApprovalsCount(res.data.count)
+                        }
+                    }).catch(() => {})
+                }
+
                 socket.on('admin-store-message', handleStoreChatAlert)
                 socket.on('send-message', (msg: any) => {
                     if (msg?.roomId?.startsWith('store_')) {
                         handleStoreChatAlert(msg)
                     }
                 })
+                socket.on('new-delivery-partner-registered', handleDeliveryRegistration)
+                socket.on('delivery-approval-status-changed', handleApprovalChanged)
 
                 return () => {
                     clearInterval(interval)
                     socket.off('admin-store-message', handleStoreChatAlert)
+                    socket.off('new-delivery-partner-registered', handleDeliveryRegistration)
+                    socket.off('delivery-approval-status-changed', handleApprovalChanged)
                 }
             }
 
@@ -568,14 +612,20 @@ export default function Nav({ user }: { user: IUser }) {
                                 { href: "/admin/view-grocery", icon: Boxes, label: "View Grocery" },
                                 { href: "/admin/manage-orders", icon: ClipboardCheck, label: "Orders", badge: pendingOrdersCount },
                                 { href: "/admin/sales-records", icon: CalendarDays, label: "Sales Calendar" },
-                                { href: "/admin/manage-users", icon: Users, label: "Users" },
+                                { href: "/admin/manage-users", icon: Users, label: "Users", badge: pendingApprovalsCount },
                                 { href: "/admin/customer-chats", icon: MessageSquare, label: "Customer Chats", badge: adminUnreadChats },
                             ].map(({ href, icon: Icon, label, badge }) => (
                                 <Link key={href} href={href}
                                     className='relative flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-semibold text-xs px-3 py-1.5 rounded-xl transition-all'
                                 >
                                     <Icon size={14} />{label}
-                                    {badge ? <span className='absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-green-600 animate-bounce'>{badge}</span> : null}
+                                    {badge ? (
+                                        <span className={`absolute -top-1.5 -right-1.5 text-white text-[9px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-green-600 ${
+                                            label === "Users" ? "bg-amber-500 animate-pulse shadow-md" : "bg-red-500 animate-bounce"
+                                        }`}>
+                                            {badge}
+                                        </span>
+                                    ) : null}
                                 </Link>
                             ))}
                         </div>
@@ -951,20 +1001,36 @@ export default function Nav({ user }: { user: IUser }) {
                                                 </>
                                             )}
                                             {user.role === "admin" && (
-                                                <Link 
-                                                    href="/admin/customer-chats" 
-                                                    className='flex items-center justify-between px-3 py-2 hover:bg-green-50 rounded-xl text-gray-700 font-medium text-sm transition' 
-                                                    onClick={() => setOpen(false)}
-                                                >
-                                                    <span className='flex items-center gap-2'>
-                                                        <MessageSquare className='w-4 h-4 text-green-600' /> Customer Chats
-                                                    </span>
-                                                    {adminUnreadChats > 0 && (
-                                                        <span className='bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full'>
-                                                            {adminUnreadChats}
+                                                <>
+                                                    <Link 
+                                                        href="/admin/manage-users" 
+                                                        className='flex items-center justify-between px-3 py-2 hover:bg-green-50 rounded-xl text-gray-700 font-medium text-sm transition' 
+                                                        onClick={() => setOpen(false)}
+                                                    >
+                                                        <span className='flex items-center gap-2'>
+                                                            <Users className='w-4 h-4 text-green-600' /> Manage Staff & Users
                                                         </span>
-                                                    )}
-                                                </Link>
+                                                        {pendingApprovalsCount > 0 && (
+                                                            <span className='bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-bounce'>
+                                                                {pendingApprovalsCount} pending
+                                                            </span>
+                                                        )}
+                                                    </Link>
+                                                    <Link 
+                                                        href="/admin/customer-chats" 
+                                                        className='flex items-center justify-between px-3 py-2 hover:bg-green-50 rounded-xl text-gray-700 font-medium text-sm transition' 
+                                                        onClick={() => setOpen(false)}
+                                                    >
+                                                        <span className='flex items-center gap-2'>
+                                                            <MessageSquare className='w-4 h-4 text-green-600' /> Customer Chats
+                                                        </span>
+                                                        {adminUnreadChats > 0 && (
+                                                            <span className='bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full'>
+                                                                {adminUnreadChats}
+                                                            </span>
+                                                        )}
+                                                    </Link>
+                                                </>
                                             )}
                                             <Link href="/profile" className='flex items-center gap-2 px-3 py-2 hover:bg-green-50 rounded-xl text-gray-700 font-medium text-sm transition' onClick={() => setOpen(false)}>
                                                 <User className='w-4 h-4 text-green-600' /> Profile & Account

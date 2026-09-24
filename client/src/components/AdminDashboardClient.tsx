@@ -5,6 +5,8 @@ import { motion } from "motion/react"
 import { Eye, EyeOff, IndianRupee, Package, Shield, Sparkles, TrendingUp, Truck, Users } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 
+import Link from 'next/link'
+
 type propType = {
   earning: {
     today: number,
@@ -18,10 +20,17 @@ type propType = {
   chartData: {
     day: string;
     orders: number;
+  }[],
+  pendingDeliveryBoys?: {
+    _id: string;
+    name: string;
+    email: string;
+    mobile?: string;
+    createdAt?: string;
   }[]
 }
 
-function AdminDashboardClient({ earning, stats, chartData }: propType) {
+function AdminDashboardClient({ earning, stats, chartData, pendingDeliveryBoys = [] }: propType) {
   const [filter, setFilter] = useState<"today" | "sevenDays" | "total">("total")
   const [hideRevenue, setHideRevenue] = useState(false)
 
@@ -134,6 +143,43 @@ function AdminDashboardClient({ earning, stats, chartData }: propType) {
           </div>
         </div>
       </div>
+
+      {/* ⚠️ Delivery Partner Pending Approval Alert Banner */}
+      {pendingDeliveryBoys && pendingDeliveryBoys.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 text-white p-5 rounded-3xl shadow-lg border border-amber-300/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl shrink-0 shadow-inner">
+              🛵
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-white text-amber-900 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
+                  Action Required
+                </span>
+                <span className="text-xs text-amber-100 font-bold">
+                  New Delivery Partner Registration
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black mt-1">
+                {pendingDeliveryBoys.length} Delivery Partner Application{pendingDeliveryBoys.length > 1 ? 's' : ''} Awaiting Your Verification
+              </h3>
+              <p className="text-xs text-amber-100 font-medium mt-0.5">
+                Applicant: <b className="text-white underline">{pendingDeliveryBoys[0]?.name}</b> ({pendingDeliveryBoys[0]?.email || pendingDeliveryBoys[0]?.mobile}). They cannot access orders or go online until verified.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/manage-users"
+            className="px-5 py-2.5 bg-white hover:bg-amber-50 text-amber-900 rounded-2xl font-black text-xs sm:text-sm shadow-md transition whitespace-nowrap active:scale-95 flex items-center gap-2 shrink-0 cursor-pointer"
+          >
+            <Users size={16} /> Review & Approve Now ({pendingDeliveryBoys.length})
+          </Link>
+        </motion.div>
+      )}
 
       {/* Revenue Banner */}
       <motion.div
