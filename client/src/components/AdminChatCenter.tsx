@@ -91,12 +91,22 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
 
     // Scroll to bottom helper
     const scrollToBottom = () => {
+        if (chatScrollRef.current) {
+            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
+        }
         setTimeout(() => {
             if (chatScrollRef.current) {
                 chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
             }
         }, 100)
     }
+
+    // Auto-scroll whenever messages list updates
+    useEffect(() => {
+        if (messages.length > 0) {
+            scrollToBottom()
+        }
+    }, [messages.length])
 
     // Fetch all store conversations
     const fetchConversations = async (showSilent = false) => {
@@ -287,7 +297,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
             roomId: activeRoomId,
             text,
             senderId: currentUser?._id || currentUser?.id || 'admin',
-            senderName: currentUser?.name || 'Snapcart Store Support',
+            senderName: currentUser?.name || 'Grocery Store Support',
             senderRole: 'admin',
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -371,12 +381,12 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
 
     // Store quick replies
     const adminQuickReplies = [
-        "👋 Hello! Snapcart Support here, how can I help you?",
+        "👋 Hello! Grocery Support here, how can I help you?",
         "🏪 We are currently hand-packing your grocery items.",
         "🛵 Your order is ready and being assigned to a rider.",
         "✓ I checked with our inventory and confirmed this item is available.",
         "💳 Your refund request has been received and initiated.",
-        "🙏 Thank you for shopping with Snapcart Central Mart!"
+        "🙏 Thank you for shopping with Grocery Central Mart!"
     ]
 
     // Filter conversations
@@ -451,10 +461,10 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                 </div>
 
                 {/* 2-Pane Chat Interface */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px] h-[calc(100vh-180px)] max-h-[820px]">
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-[calc(100vh-170px)] min-h-[580px] max-h-[880px]">
                     
                     {/* LEFT PANE: Conversations List */}
-                    <div className="lg:col-span-4 border-r border-gray-100 flex flex-col h-full bg-gray-50/40">
+                    <div className="lg:col-span-4 border-r border-gray-100 flex flex-col h-full min-h-0 bg-gray-50/40 overflow-hidden">
                         {/* Search & Tabs */}
                         <div className="p-3.5 border-b border-gray-100 space-y-2.5 bg-white">
                             <div className="relative">
@@ -614,7 +624,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                     </div>
 
                     {/* RIGHT PANE: Chat View */}
-                    <div className="lg:col-span-8 flex flex-col h-full bg-white">
+                    <div className="lg:col-span-8 flex flex-col h-full min-h-0 bg-white overflow-hidden relative">
                         {selectedConversation ? (
                             <>
                                 {/* Chat Header */}
@@ -721,7 +731,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                 {/* Messages Stream */}
                                 <div 
                                     ref={chatScrollRef}
-                                    className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#fafafa]/50"
+                                    className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3 bg-[#fafafa]/50 scroll-smooth"
                                 >
                                     {loadingMessages ? (
                                         <div className="flex items-center justify-center h-full">
@@ -770,7 +780,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                 </div>
 
                                 {/* Smart Quick Replies & AI Bar */}
-                                <div className="p-3 bg-white border-t border-gray-100 space-y-2 shrink-0">
+                                <div className="p-3 bg-white border-t border-gray-100 space-y-2 shrink-0 sticky bottom-0 z-10">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                             Store Quick Replies
@@ -828,7 +838,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                             type="text"
                                             value={replyText}
                                             onChange={(e) => setReplyText(e.target.value)}
-                                            placeholder={`Reply to ${selectedConversation.customer?.name || 'Customer'} as Snapcart Store...`}
+                                            placeholder={`Reply to ${selectedConversation.customer?.name || 'Customer'} as Grocery Store...`}
                                             className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-green-500 outline-none"
                                         />
                                         <button
