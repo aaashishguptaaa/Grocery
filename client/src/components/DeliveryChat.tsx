@@ -85,31 +85,19 @@ const getSuggestion=async ()=>{
 
 
   return (
-    <div className='bg-white rounded-3xl shadow-lg border p-4 h-[430px] flex flex-col'>
+    <div className='bg-white rounded-3xl shadow-lg border p-4 h-[340px] flex flex-col'>
 
-      <div className='flex justify-between items-center mb-3'>
-        <span className='font-semibold text-gray-700 text-sm'>Quick Replies</span>
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          disabled={loading}
-          onClick={getSuggestion}
-          className="px-3 py-1 text-xs flex items-center gap-1 bg-purple-100 text-purple-700 rounded-full shadow-sm border border-purple-200"
-
-        ><Sparkle size={14} />{loading?<Loader className="w-5 h-5 animate-spin" />:"AI suggest"}</motion.button>
+    <div className='flex items-center justify-between pb-2.5 border-b border-gray-100 mb-2'>
+      <div className='flex items-center gap-2'>
+        <div className='w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs'>
+          👤
+        </div>
+        <div>
+          <h4 className='font-bold text-xs sm:text-sm text-gray-800'>Chat with Customer</h4>
+          <p className='text-[10px] text-gray-400'>Direct customer delivery updates</p>
+        </div>
       </div>
-
-      <div className='flex gap-2 flex-wrap mb-3'>
-        {suggestions.map((s, i) => (
-          <motion.div
-            key={s}
-            whileTap={{ scale: 0.92 }}
-            className="px-3 py-1 text-xs bg-green-50 border border-green-200 cursor-pointer text-green-700 rounded-full"
-           onClick={()=>setNewMessage(s)}
-          >
-            {s}
-          </motion.div>
-        ))}
-      </div>
+    </div>
 
 
 
