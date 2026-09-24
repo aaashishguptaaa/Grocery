@@ -68,6 +68,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [loadingConversations, setLoadingConversations] = useState(true)
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
+    const selectedRoomIdRef = useRef<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'orders'>('all')
 
@@ -81,6 +82,12 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
     const [soundEnabled, setSoundEnabled] = useState(true)
 
     const chatScrollRef = useRef<HTMLDivElement>(null)
+
+    // Helper to switch active conversation and keep ref in sync
+    const selectRoom = (roomId: string) => {
+        selectedRoomIdRef.current = roomId
+        setSelectedRoomId(roomId)
+    }
 
     // Scroll to bottom helper
     const scrollToBottom = () => {
@@ -98,8 +105,9 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
             const res = await axios.get('/api/admin/chat-conversations')
             if (Array.isArray(res.data)) {
                 setConversations(res.data)
-                // If nothing selected and we have conversations, auto-select first
-                if (!selectedRoomId && res.data.length > 0) {
+                // ONLY auto-select the first conversation on initial load if user has NOT selected any room yet
+                if (!selectedRoomIdRef.current && res.data.length > 0) {
+                    selectedRoomIdRef.current = res.data[0].roomId
                     setSelectedRoomId(res.data[0].roomId)
                 }
             }
@@ -177,7 +185,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                 toast.custom((t) => (
                     <div 
                         onClick={() => {
-                            setSelectedRoomId(msg.roomId)
+                            selectRoom(msg.roomId)
                             toast.dismiss(t.id)
                         }}
                         className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 p-3.5 border border-emerald-100 cursor-pointer hover:bg-emerald-50/50 transition`}
@@ -213,7 +221,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
 
     // Mark single conversation as read
     const handleMarkAsRead = async (roomId?: string) => {
-        const targetRoom = roomId || selectedRoomId
+        const targetRoom = roomId || selectedRoomIdRef.current || selectedRoomId
         if (!targetRoom) return
 
         // Update local state immediately
@@ -246,10 +254,11 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
     // Send reply as Store Admin
     const handleSendReply = async (textToSend?: string) => {
         const text = (textToSend ?? replyText).trim()
-        if (!text || !selectedRoomId) return
+        const activeRoomId = selectedRoomIdRef.current || selectedRoomId
+        if (!text || !activeRoomId) return
 
         const payload = {
-            roomId: selectedRoomId,
+            roomId: activeRoomId,
             text,
             senderId: currentUser?._id || currentUser?.id || 'admin',
             senderName: currentUser?.name || 'Snapcart Store Support',
@@ -266,7 +275,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
 
         // Clear unread badge locally for this room
         setConversations(prev => prev.map(c => {
-            if (c.roomId === selectedRoomId) {
+            if (c.roomId === activeRoomId) {
                 return {
                     ...c,
                     unreadCount: 0,
@@ -508,7 +517,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                     return (
                                         <div
                                             key={conv.roomId}
-                                            onClick={() => setSelectedRoomId(conv.roomId)}
+                                            onClick={() => selectRoom(conv.roomId)}
                                             className={`p-3.5 transition cursor-pointer relative flex items-start gap-3 select-none ${
                                                 isSelected 
                                                     ? 'bg-emerald-50/70 border-l-4 border-emerald-600' 
