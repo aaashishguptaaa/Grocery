@@ -12,8 +12,12 @@ export async function GET() {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        // Find all delivery partners (excluding banned ones) including their live GPS coordinates
-        const deliveryBoys = await User.find({ role: "deliveryBoy", isBanned: { $ne: true } })
+        // Find all verified delivery partners (excluding unapproved or banned ones)
+        const deliveryBoys = await User.find({ 
+            role: "deliveryBoy", 
+            isApproved: true, 
+            isBanned: { $ne: true } 
+        })
             .select("name email mobile isOnline lastActive image location")
             .sort({ isOnline: -1, name: 1 });
 

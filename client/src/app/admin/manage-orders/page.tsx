@@ -24,8 +24,12 @@ export default async function ManageOrders() {
         .populate("assignedDeliveryBoy", "name mobile isOnline")
         .sort({ createdAt: -1 })
 
-    // Fetch all delivery partners
-    const deliveryBoys = await User.find({ role: "deliveryBoy" })
+    // Fetch all verified delivery partners
+    const deliveryBoys = await User.find({ 
+        role: "deliveryBoy",
+        isApproved: true,
+        isBanned: { $ne: true }
+    })
         .select("name email mobile isOnline")
         .sort({ isOnline: -1, name: 1 })
 

@@ -16,9 +16,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Invalid role" }, { status: 400 })
         }
 
+        const updateFields: any = { role };
+        if (role === "deliveryBoy") {
+            updateFields.isApproved = true;
+            updateFields.deliveryApprovalStatus = "approved";
+            updateFields.approvedAt = new Date();
+        } else {
+            updateFields.isApproved = true;
+            updateFields.deliveryApprovalStatus = "approved";
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { role },
+            updateFields,
             { new: true }
         ).select("-password")
 

@@ -48,6 +48,11 @@ export interface IUser {
     isBanned?: boolean;
     banReason?: string;
     bannedAt?: Date;
+    // Verification & approval status (for delivery partners)
+    isApproved?: boolean;
+    deliveryApprovalStatus?: "pending" | "approved" | "rejected";
+    approvalRequestedAt?: Date;
+    approvedAt?: Date;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -130,7 +135,7 @@ const userSchema = new mongoose.Schema<IUser>({
     storeDetails: {
         storeName: {
             type: String,
-            default: "Snapcart Central Mart",
+            default: "Grocery Central Mart",
         },
         storePhone: {
             type: String,
@@ -158,6 +163,23 @@ const userSchema = new mongoose.Schema<IUser>({
         default: "",
     },
     bannedAt: {
+        type: Date,
+        default: null,
+    },
+    isApproved: {
+        type: Boolean,
+        default: false,
+    },
+    deliveryApprovalStatus: {
+        type: String,
+        enum: ["pending", "approved", "rejected"],
+        default: "pending",
+    },
+    approvalRequestedAt: {
+        type: Date,
+        default: null,
+    },
+    approvedAt: {
         type: Date,
         default: null,
     },

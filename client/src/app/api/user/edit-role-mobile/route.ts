@@ -9,9 +9,19 @@ export async function POST(req:NextRequest){
        await connectDb()
        const {role,mobile}=await req.json() 
        const session=await auth()
-       const user=await User.findOneAndUpdate({email:session?.user?.email},{
-        role,mobile
-       },{new:true})
+       
+       const updateFields: any = { role, mobile };
+       if (role === "deliveryBoy") {
+           updateFields.isApproved = false;
+           updateFields.deliveryApprovalStatus = "pending";
+           updateFields.approvalRequestedAt = new Date();
+           updateFields.isOnline = false;
+       } else {
+           updateFields.isApproved = true;
+           updateFields.deliveryApprovalStatus = "approved";
+       }
+
+       const user=await User.findOneAndUpdate({email:session?.user?.email}, updateFields, {new:true})
        if(!user){
         return NextResponse.json(
             {message:"user not found"},

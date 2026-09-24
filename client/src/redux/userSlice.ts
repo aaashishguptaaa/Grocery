@@ -10,6 +10,8 @@ interface IUser{
     image?:string
     isBanned?:boolean
     banReason?:string
+    isApproved?:boolean
+    deliveryApprovalStatus?:string
 }
 interface IUserSlice{
     userData:IUser | null

@@ -27,6 +27,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
+        const user = await User.findById(session.user.id);
+        if (!user) {
+            return NextResponse.json({ message: "User not found" }, { status: 404 });
+        }
+        if (user.isBanned) {
+            return NextResponse.json({ message: "Account is suspended." }, { status: 403 });
+        }
+        if (!user.isApproved) {
+            return NextResponse.json({ message: "Your delivery partner account is awaiting admin approval." }, { status: 403 });
+        }
+
         const { isOnline } = await req.json();
         const updated = await User.findByIdAndUpdate(
             session.user.id,

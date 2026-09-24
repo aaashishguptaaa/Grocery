@@ -9,6 +9,7 @@ import UserDashboard from '@/components/UserDashboard'
 import connectDb from '@/lib/db'
 import Grocery, { IGrocery } from '@/models/grocery.model'
 import SuspendedAccount from '@/components/SuspendedAccount'
+import DeliveryPendingApproval from '@/components/DeliveryPendingApproval'
 import User from '@/models/user.model'
 import { redirect } from 'next/navigation'
 
@@ -40,6 +41,11 @@ async function Home(props: {
         }
         plainUser = JSON.parse(JSON.stringify(user))
         userRole = user.role
+
+        // Delivery partners must be verified and approved by admin
+        if (userRole === "deliveryBoy" && !user.isApproved) {
+          return <DeliveryPendingApproval user={plainUser} />
+        }
       }
     }
   }

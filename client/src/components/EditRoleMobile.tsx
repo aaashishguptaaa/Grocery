@@ -264,6 +264,20 @@ export default function EditRoleMobile() {
                         </div>
                     </div>
 
+                    {/* Delivery Partner Verification Notice */}
+                    {selectedRole === 'deliveryBoy' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs font-semibold flex items-start gap-2.5 text-left"
+                        >
+                            <span className="text-base shrink-0">🛡️</span>
+                            <span className="leading-relaxed">
+                                <b className="font-black text-amber-900 dark:text-amber-200">Admin Approval Required:</b> Delivery partner registrations must be manually verified and approved by the store administrator before accessing delivery orders.
+                            </span>
+                        </motion.div>
+                    )}
+
                     {/* ── Cute Bouncy Action Button ── */}
                     <motion.button
                         whileHover={isValid ? { scale: 1.02 } : {}}
@@ -283,7 +297,7 @@ export default function EditRoleMobile() {
                             </>
                         ) : isValid ? (
                             <>
-                                <span>Continue to Store</span>
+                                <span>{selectedRole === 'deliveryBoy' ? 'Submit for Admin Approval' : 'Continue to Store'}</span>
                                 <ArrowRight size={17} />
                             </>
                         ) : (

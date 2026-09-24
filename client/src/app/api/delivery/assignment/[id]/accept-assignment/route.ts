@@ -22,6 +22,11 @@ export async function GET(req:NextRequest,context: { params: Promise<{ id: strin
                 message: `Account restricted: ${rider.banReason || 'Policy violation'}. You cannot accept delivery orders.` 
             }, { status: 403 });
         }
+        if (!rider?.isApproved) {
+            return NextResponse.json({ 
+                message: "Account pending verification: You must be approved by the admin before accepting orders." 
+            }, { status: 403 });
+        }
 
         const assignment=await DeliveryAssignment.findById(id)
         if(!assignment){
