@@ -1,4 +1,4 @@
-# 🛒 Snapcart — Modern 10-Minute Grocery Delivery Platform
+# 🛒 Grocery — Modern 10-Minute Delivery Platform
 
 [![Live Application](https://img.shields.io/badge/🚀%20Live%20Demo-grocery--beta--livid.vercel.app-16a34a?style=for-the-badge)](https://grocery-beta-livid.vercel.app)
 [![WebSocket Server](https://img.shields.io/badge/⚡%20WebSocket%20Live-Render%20Cloud-46E3B7?style=for-the-badge&logo=render)](https://grocery-socket.onrender.com)
@@ -8,7 +8,7 @@
 [![Google Gemini AI](https://img.shields.io/badge/Google%20Gemini%20AI-8E75B2?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Razorpay](https://img.shields.io/badge/Razorpay-Payments-02042B?style=for-the-badge&logo=razorpay&logoColor=3395FF)](https://razorpay.com/)
 
-> **Snapcart** is an end-to-end, full-stack 10-minute grocery delivery web application engineered with modern web technologies, real-time bi-directional WebSocket communication, AI-powered recipe intelligence, multi-role security, and an interactive admin sales analytics system.
+> **Grocery** is an end-to-end, full-stack 10-minute delivery web application engineered with modern web technologies, real-time bi-directional WebSocket communication, AI-powered recipe intelligence, multi-role security, and an interactive admin sales analytics system.
 
 ---
 
@@ -21,7 +21,7 @@
 
 ## 💡 What I Built
 
-Snapcart is divided into three comprehensive, interconnected portals:
+Grocery is divided into three comprehensive, interconnected portals:
 
 ### 1. 🛍️ Customer Experience Portal
 * **Dynamic Product Catalog**: Real-time category browsing, keyword search, price calculations, and live stock-level indicators.
