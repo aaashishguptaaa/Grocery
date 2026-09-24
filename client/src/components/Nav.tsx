@@ -272,9 +272,9 @@ export default function Nav({ user }: { user: IUser }) {
             if (msg.roomId === customerRoomId) {
                 if (msg.senderRole !== "admin") return
 
-                const msgKey = msg._id || `${msg.time}_${msg.text}`
-                if (processedMsgIds.has(msgKey)) return
-                processedMsgIds.add(msgKey)
+                const msgKey = String(msg.clientMsgId || msg._id || '')
+                if (msgKey && processedMsgIds.has(msgKey)) return
+                if (msgKey) processedMsgIds.add(msgKey)
 
                 // Play notification popup sound chime!
                 playChatNotificationChime()
@@ -322,9 +322,9 @@ export default function Nav({ user }: { user: IUser }) {
             if (msg.senderRole === "user") return
 
             if (isOrderChat && orderId) {
-                const msgKey = msg._id || `rider_${orderId}_${msg.time}_${msg.text}`
-                if (processedMsgIds.has(msgKey)) return
-                processedMsgIds.add(msgKey)
+                const msgKey = String(msg.clientMsgId || msg._id || '')
+                if (msgKey && processedMsgIds.has(msgKey)) return
+                if (msgKey) processedMsgIds.add(msgKey)
 
                 // 🔔 WAKE UP THE NOTIFICATION: Remove from clearedNotifKeys & reset dismissed alerts!
                 setClearedNotifKeys(prev => {

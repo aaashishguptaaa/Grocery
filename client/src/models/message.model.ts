@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 export interface IMessage {
     _id?: any;
+    clientMsgId?: string;
     roomId: string;
     text: string;
     senderId?: any;
@@ -14,6 +15,10 @@ export interface IMessage {
 }
 
 const messageSchema = new mongoose.Schema<IMessage>({
+    clientMsgId: {
+        type: String,
+        index: true
+    },
     roomId: {
         type: String,
         required: true,

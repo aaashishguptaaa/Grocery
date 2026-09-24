@@ -123,7 +123,7 @@ return ()=>socket.off("update-deliveryBoy-location")
         setMessages((prev) => {
           if (prev?.some(m => 
             (m._id && message._id && String(m._id) === String(message._id)) || 
-            (m.time === message.time && m.text === message.text)
+            (m.clientMsgId && message.clientMsgId && m.clientMsgId === message.clientMsgId)
           )) {
             return prev
           }

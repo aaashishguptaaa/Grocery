@@ -15,11 +15,11 @@ export async function POST(req: NextRequest) {
         const queryRooms = Array.from(new Set([String(roomId), cleanId, `order_${cleanId}`]));
         const messages = await Message.find({ roomId: { $in: queryRooms } }).sort({ createdAt: 1 });
 
-        // Filter out accidental duplicates from DB
+        // Filter out accidental duplicates from DB (by unique clientMsgId or database _id)
         const deduplicated: any[] = [];
         const seenKeys = new Set<string>();
         for (const m of messages) {
-            const key = `${m.senderRole}_${m.text}_${m.time}`;
+            const key = m.clientMsgId ? `c_${m.clientMsgId}` : String(m._id);
             if (!seenKeys.has(key)) {
                 seenKeys.add(key);
                 deduplicated.push(m);

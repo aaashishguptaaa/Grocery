@@ -31,7 +31,7 @@ function DeliveryChat({ orderId, deliveryBoyId }: props) {
         setMessages((prev) => {
           if (prev?.some(m => 
             (m._id && message._id && String(m._id) === String(message._id)) || 
-            (m.time === message.time && m.text === message.text)
+            (m.clientMsgId && message.clientMsgId && m.clientMsgId === message.clientMsgId)
           )) {
             return prev
           }
@@ -49,14 +49,18 @@ function DeliveryChat({ orderId, deliveryBoyId }: props) {
   }, [orderId])
 
   const sendMsg = () => {
+    if (!newMessage.trim()) return
     const socket = getSocket()
     const cleanId = orderId.replace(/^order_/, '')
     const targetRoom = `order_${cleanId}`
+    const clientMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9)
 
     const message = {
+      _id: clientMsgId,
+      clientMsgId,
       roomId: targetRoom,
       orderId: cleanId,
-      text: newMessage,
+      text: newMessage.trim(),
       senderId: deliveryBoyId,
       senderRole: "deliveryBoy",
       senderName: "Delivery Partner",

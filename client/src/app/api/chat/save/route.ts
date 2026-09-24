@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
     try {
         await connectDb();
-        const { senderId, text, roomId, time, senderName, senderRole } = await req.json();
+        const { senderId, text, roomId, time, senderName, senderRole, clientMsgId } = await req.json();
 
         if (!roomId || !text) {
             return NextResponse.json({ message: "roomId and text are required" }, { status: 400 });
@@ -27,19 +27,18 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Deduplicate: If an identical message was created within the last 4 seconds in this room, return it
-        const trimmedText = String(text).trim();
-        const recentDuplicate = await Message.findOne({
-            roomId: String(roomId),
-            text: trimmedText,
-            senderId: senderId || null,
-            createdAt: { $gte: new Date(Date.now() - 4000) }
-        });
-        if (recentDuplicate) {
-            return NextResponse.json(recentDuplicate, { status: 200 });
+        // Deduplicate using unique clientMsgId (e.g. client and socketServer both saving the exact same message instance)
+        if (clientMsgId) {
+            const existing = await Message.findOne({ clientMsgId: String(clientMsgId) });
+            if (existing) {
+                return NextResponse.json(existing, { status: 200 });
+            }
         }
 
+        const trimmedText = String(text).trim();
+
         const message = await Message.create({
+            clientMsgId: clientMsgId ? String(clientMsgId) : undefined,
             senderId: senderId || null,
             text: trimmedText,
             roomId: String(roomId),

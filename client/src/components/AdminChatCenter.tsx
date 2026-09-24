@@ -181,8 +181,9 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
             // If it's for currently opened room, append it
             if (msg.roomId === selectedRoomId) {
                 if (msg.senderRole === 'admin') return
+                const msgKey = String(msg.clientMsgId || msg._id || '')
                 setMessages(prev => {
-                    if (prev.some(m => (m._id && msg._id && m._id === msg._id) || (m.time === msg.time && m.text === msg.text))) return prev
+                    if (msgKey && prev.some(m => String(m.clientMsgId || m._id || '') === msgKey)) return prev
                     return [...prev, msg]
                 })
                 scrollToBottom()
@@ -345,7 +346,10 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
         const activeRoomId = selectedRoomIdRef.current || selectedRoomId
         if (!text || !activeRoomId) return
 
+        const clientMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9)
         const payload = {
+            _id: clientMsgId,
+            clientMsgId,
             roomId: activeRoomId,
             text,
             senderId: currentUser?._id || currentUser?.id || 'admin',
@@ -355,8 +359,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
         }
 
         // Optimistic UI update
-        const tempId = 'temp_' + Date.now()
-        setMessages(prev => [...prev, { ...payload, _id: tempId }])
+        setMessages(prev => [...prev, payload])
         setReplyText('')
         setSending(true)
         scrollToBottom()
@@ -383,7 +386,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
             // Save to database
             const res = await axios.post('/api/chat/save', payload)
             if (res.data && res.data._id) {
-                setMessages(prev => prev.map(m => m._id === tempId ? res.data : m))
+                setMessages(prev => prev.map(m => (m._id === clientMsgId || m.clientMsgId === clientMsgId) ? { ...res.data, clientMsgId } : m))
             }
 
             // Emit via socket

@@ -108,10 +108,10 @@ export default function ChatModal({
         axios.post('/api/chat/messages', { roomId })
             .then(res => {
                 if (isSubscribed && Array.isArray(res.data)) {
-                    // Populate processedMsgIds with loaded history so incoming duplicates are ignored
+                    // Populate processedMsgIds with loaded message IDs
                     res.data.forEach((m: any) => {
                         if (m._id) processedMsgIds.current.add(String(m._id))
-                        processedMsgIds.current.add(`${m.senderRole || m.senderId}_${m.time}_${m.text}`)
+                        if (m.clientMsgId) processedMsgIds.current.add(String(m.clientMsgId))
                     })
                     setMessages(res.data)
                     scrollToBottom()
@@ -157,17 +157,13 @@ export default function ChatModal({
                                 (msg?.orderId && String(msg.orderId) === currentClean)
 
                 if (isMatch) {
-                    const uniqueKey = msg._id ? String(msg._id) : `${msg.senderRole || msg.senderId}_${msg.time}_${msg.text}`
-                    if (processedMsgIds.current.has(uniqueKey)) return
-                    processedMsgIds.current.add(uniqueKey)
+                    const msgKey = String(msg.clientMsgId || msg._id || '')
+                    if (msgKey && processedMsgIds.current.has(msgKey)) return
+                    if (msgKey) processedMsgIds.current.add(msgKey)
 
                     setMessages(prev => {
-                        // Prevent duplicates across state
-                        if (prev.some(m => 
-                            (m._id && msg._id && String(m._id) === String(msg._id)) || 
-                            (m.text === msg.text && String(m.senderId) === String(msg.senderId)) ||
-                            (m.text === msg.text && m.senderRole === msg.senderRole && (m.time === msg.time || !m.time || !msg.time))
-                        )) return prev
+                        // Prevent identical message instance from being duplicated
+                        if (msgKey && prev.some(m => String(m.clientMsgId || m._id || '') === msgKey)) return prev
                         return [...prev, msg]
                     })
                     scrollToBottom()
@@ -204,7 +200,7 @@ export default function ChatModal({
         isSendingRef.current = true
         setIsSending(true)
 
-        const clientMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+        const clientMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9)
         const formattedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
         const payload = {
@@ -218,9 +214,8 @@ export default function ChatModal({
             time: formattedTime
         }
 
-        // Register in processed IDs so any echo is immediately dropped
+        // Register clientMsgId so echoes of this exact message are dropped
         processedMsgIds.current.add(clientMsgId)
-        processedMsgIds.current.add(`${currentUser?._id || currentUser?.role}_${formattedTime}_${text}`)
 
         // Optimistic update
         setMessages(prev => [...prev, payload])
@@ -243,7 +238,7 @@ export default function ChatModal({
             setTimeout(() => {
                 isSendingRef.current = false
                 setIsSending(false)
-            }, 300)
+            }, 250)
         }
     }
 
