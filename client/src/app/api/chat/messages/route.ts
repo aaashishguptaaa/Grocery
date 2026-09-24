@@ -15,7 +15,18 @@ export async function POST(req: NextRequest) {
         const queryRooms = Array.from(new Set([String(roomId), cleanId, `order_${cleanId}`]));
         const messages = await Message.find({ roomId: { $in: queryRooms } }).sort({ createdAt: 1 });
 
-        return NextResponse.json(messages, { status: 200 });
+        // Filter out accidental duplicates from DB
+        const deduplicated: any[] = [];
+        const seenKeys = new Set<string>();
+        for (const m of messages) {
+            const key = `${m.senderRole}_${m.text}_${m.time}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                deduplicated.push(m);
+            }
+        }
+
+        return NextResponse.json(deduplicated, { status: 200 });
     } catch (error) {
         return NextResponse.json({ message: `get messages error ${error}` }, { status: 500 });
     }

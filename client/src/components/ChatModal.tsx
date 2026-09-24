@@ -45,6 +45,9 @@ export default function ChatModal({
     const [loadingMessages, setLoadingMessages] = useState(false)
     const [aiLoading, setAiLoading] = useState(false)
     const [suggestions, setSuggestions] = useState<string[]>([])
+    const [isSending, setIsSending] = useState(false)
+    const isSendingRef = useRef(false)
+    const processedMsgIds = useRef<Set<string>>(new Set())
     const chatScrollRef = useRef<HTMLDivElement>(null)
 
     // Scroll to bottom
@@ -105,6 +108,11 @@ export default function ChatModal({
         axios.post('/api/chat/messages', { roomId })
             .then(res => {
                 if (isSubscribed && Array.isArray(res.data)) {
+                    // Populate processedMsgIds with loaded history so incoming duplicates are ignored
+                    res.data.forEach((m: any) => {
+                        if (m._id) processedMsgIds.current.add(String(m._id))
+                        processedMsgIds.current.add(`${m.senderRole || m.senderId}_${m.time}_${m.text}`)
+                    })
                     setMessages(res.data)
                     scrollToBottom()
                 }
@@ -132,6 +140,14 @@ export default function ChatModal({
             }
 
             const handleIncoming = (msg: any) => {
+                if (!msg) return
+
+                // 1. Ignore own echoed messages - sender already rendered them optimistically
+                const myId = String(currentUser?._id || '')
+                if (msg.senderId && myId && String(msg.senderId) === myId) {
+                    return
+                }
+
                 const msgRoom = String(msg?.roomId || '')
                 const msgClean = msgRoom.replace(/^order_/, '')
                 const currentClean = roomId.replace(/^order_/, '')
@@ -141,9 +157,17 @@ export default function ChatModal({
                                 (msg?.orderId && String(msg.orderId) === currentClean)
 
                 if (isMatch) {
+                    const uniqueKey = msg._id ? String(msg._id) : `${msg.senderRole || msg.senderId}_${msg.time}_${msg.text}`
+                    if (processedMsgIds.current.has(uniqueKey)) return
+                    processedMsgIds.current.add(uniqueKey)
+
                     setMessages(prev => {
-                        // Prevent duplicates
-                        if (prev.some(m => (m._id && msg._id && m._id === msg._id) || (m.time === msg.time && m.text === msg.text && String(m.senderId) === String(msg.senderId)))) return prev
+                        // Prevent duplicates across state
+                        if (prev.some(m => 
+                            (m._id && msg._id && String(m._id) === String(msg._id)) || 
+                            (m.text === msg.text && String(m.senderId) === String(msg.senderId)) ||
+                            (m.text === msg.text && m.senderRole === msg.senderRole && (m.time === msg.time || !m.time || !msg.time))
+                        )) return prev
                         return [...prev, msg]
                     })
                     scrollToBottom()
@@ -156,11 +180,9 @@ export default function ChatModal({
             }
 
             socket.on('send-message', handleIncoming)
-            socket.on('order-chat-message', handleIncoming)
             return () => {
                 isSubscribed = false
                 socket.off('send-message', handleIncoming)
-                socket.off('order-chat-message', handleIncoming)
             }
         }
 
@@ -175,20 +197,33 @@ export default function ChatModal({
 
     // Send a message
     const handleSend = async (textToSend?: string) => {
+        if (isSendingRef.current) return
         const text = (textToSend ?? newMessage).trim()
         if (!text) return
 
+        isSendingRef.current = true
+        setIsSending(true)
+
+        const clientMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+        const formattedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
         const payload = {
+            _id: clientMsgId,
+            clientMsgId,
             roomId,
             text,
             senderId: currentUser?._id,
             senderName: currentUser?.name || 'User',
             senderRole: currentUser?.role || 'user',
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            time: formattedTime
         }
 
+        // Register in processed IDs so any echo is immediately dropped
+        processedMsgIds.current.add(clientMsgId)
+        processedMsgIds.current.add(`${currentUser?._id || currentUser?.role}_${formattedTime}_${text}`)
+
         // Optimistic update
-        setMessages(prev => [...prev, { ...payload, _id: 'temp_' + Date.now() }])
+        setMessages(prev => [...prev, payload])
         setNewMessage('')
         scrollToBottom()
 
@@ -204,6 +239,11 @@ export default function ChatModal({
         } catch (e) {
             console.error('Failed to send message:', e)
             toast.error('Failed to deliver message')
+        } finally {
+            setTimeout(() => {
+                isSendingRef.current = false
+                setIsSending(false)
+            }, 300)
         }
     }
 
@@ -375,8 +415,9 @@ export default function ChatModal({
                                 <button
                                     key={i}
                                     type="button"
+                                    disabled={isSending}
                                     onClick={() => handleSend(chip)}
-                                    className="whitespace-nowrap text-[11px] font-semibold bg-gray-50 hover:bg-green-50 hover:text-green-700 hover:border-green-300 text-gray-700 px-2.5 py-1 rounded-xl border border-gray-200 transition cursor-pointer shrink-0 active:scale-95"
+                                    className="whitespace-nowrap text-[11px] font-semibold bg-gray-50 hover:bg-green-50 hover:text-green-700 hover:border-green-300 disabled:opacity-50 disabled:pointer-events-none text-gray-700 px-2.5 py-1 rounded-xl border border-gray-200 transition cursor-pointer shrink-0 active:scale-95"
                                 >
                                     {chip}
                                 </button>
@@ -401,7 +442,7 @@ export default function ChatModal({
                         />
                         <button
                             type="submit"
-                            disabled={!newMessage.trim()}
+                            disabled={!newMessage.trim() || isSending}
                             className="w-10 h-10 rounded-2xl bg-green-600 hover:bg-green-700 disabled:bg-gray-200 text-white flex items-center justify-center transition cursor-pointer shrink-0 shadow-sm active:scale-95"
                         >
                             <Send size={16} />

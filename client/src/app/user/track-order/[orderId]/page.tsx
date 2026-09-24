@@ -117,10 +117,14 @@ return ()=>socket.off("update-deliveryBoy-location")
     socket.emit("join-room", `order_${cleanId}`)
 
     const handleIncoming = (message: any) => {
+      if (!message) return
       const msgClean = String(message?.roomId || message?.orderId || '').replace(/^order_/, '')
       if (message.roomId === orderId || msgClean === cleanId) {
         setMessages((prev) => {
-          if (prev?.some(m => (m._id && message._id && m._id === message._id) || (m.time === message.time && m.text === message.text))) {
+          if (prev?.some(m => 
+            (m._id && message._id && String(m._id) === String(message._id)) || 
+            (m.time === message.time && m.text === message.text)
+          )) {
             return prev
           }
           return [...(prev || []), message]
@@ -129,11 +133,9 @@ return ()=>socket.off("update-deliveryBoy-location")
     }
 
     socket.on("send-message", handleIncoming)
-    socket.on("order-chat-message", handleIncoming)
 
     return () => {
       socket.off("send-message", handleIncoming)
-      socket.off("order-chat-message", handleIncoming)
     }
   }, [orderId])
 

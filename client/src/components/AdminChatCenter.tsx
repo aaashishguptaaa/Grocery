@@ -180,8 +180,9 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
 
             // If it's for currently opened room, append it
             if (msg.roomId === selectedRoomId) {
+                if (msg.senderRole === 'admin') return
                 setMessages(prev => {
-                    if (prev.some(m => m._id && msg._id && m._id === msg._id)) return prev
+                    if (prev.some(m => (m._id && msg._id && m._id === msg._id) || (m.time === msg.time && m.text === msg.text))) return prev
                     return [...prev, msg]
                 })
                 scrollToBottom()

@@ -80,17 +80,21 @@ io.on("connection", (socket) => {
         } catch (error) {
             console.log("Chat save error (handled):", error.message)
         }
-        io.to(message.roomId).emit("send-message", message)
-
-        // Handle order chat rooms: emit to both prefixed and raw formats, and broadcast order-chat-message
+        // Chaining .to() in Socket.IO ensures sockets in multiple rooms receive the packet ONLY ONCE!
+        const rooms = [message.roomId]
+        let orderId = null
         if (message.roomId && message.roomId.startsWith("order_")) {
-            const rawId = message.roomId.replace("order_", "")
-            io.to(rawId).emit("send-message", message)
-            io.emit("order-chat-message", { ...message, orderId: rawId })
+            orderId = message.roomId.replace("order_", "")
+            rooms.push(orderId)
         } else if (message.roomId && !message.roomId.startsWith("store_")) {
-            io.to(`order_${message.roomId}`).emit("send-message", message)
-            io.emit("order-chat-message", { ...message, orderId: message.roomId })
+            orderId = message.roomId
+            rooms.push(`order_${orderId}`)
         }
+
+        const uniqueRooms = Array.from(new Set(rooms)).filter(Boolean)
+        let emitter = io
+        uniqueRooms.forEach(r => { emitter = emitter.to(r) })
+        emitter.emit("send-message", message)
 
         if (message.roomId && message.roomId.startsWith("store_")) {
             io.emit("admin-store-message", message)

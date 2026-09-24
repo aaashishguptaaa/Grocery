@@ -468,7 +468,6 @@ export default function Nav({ user }: { user: IUser }) {
         socket.on('order-delivered', handleDelivered)
         socket.on('send-message', handleIncomingChatForCustomer)
         socket.on('admin-store-message', handleIncomingChatForCustomer)
-        socket.on('order-chat-message', handleIncomingChatForCustomer)
 
         return () => {
             socket.off('order-dispatched', handleDispatched)
@@ -476,7 +475,6 @@ export default function Nav({ user }: { user: IUser }) {
             socket.off('order-delivered', handleDelivered)
             socket.off('send-message', handleIncomingChatForCustomer)
             socket.off('admin-store-message', handleIncomingChatForCustomer)
-            socket.off('order-chat-message', handleIncomingChatForCustomer)
         }
     }, [user])
 

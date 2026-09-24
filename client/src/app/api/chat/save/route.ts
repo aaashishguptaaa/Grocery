@@ -27,9 +27,21 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Deduplicate: If an identical message was created within the last 4 seconds in this room, return it
+        const trimmedText = String(text).trim();
+        const recentDuplicate = await Message.findOne({
+            roomId: String(roomId),
+            text: trimmedText,
+            senderId: senderId || null,
+            createdAt: { $gte: new Date(Date.now() - 4000) }
+        });
+        if (recentDuplicate) {
+            return NextResponse.json(recentDuplicate, { status: 200 });
+        }
+
         const message = await Message.create({
             senderId: senderId || null,
-            text: String(text).trim(),
+            text: trimmedText,
             roomId: String(roomId),
             senderName: senderName || (role === "admin" ? "Grocery Store Support" : "User"),
             senderRole: role,
