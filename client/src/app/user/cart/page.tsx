@@ -13,6 +13,13 @@ export default function CartPage() {
     const router = useRouter()
     const dispatch = useDispatch()
     const { cartData } = useSelector((state: RootState) => state.cart)
+    const { userData } = useSelector((state: RootState) => state.user)
+
+    React.useEffect(() => {
+        if (userData?.isBanned) {
+            router.push('/account-suspended')
+        }
+    }, [userData, router])
 
     const hasOutOfStockItems = Array.isArray(cartData) && cartData.some((item: any) => item.inStock === false)
 

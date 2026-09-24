@@ -50,14 +50,17 @@ export async function GET(req: NextRequest) {
             if (roomId.startsWith("store_user_")) {
                 const userId = roomId.replace("store_user_", "");
                 if (mongoose.Types.ObjectId.isValid(userId)) {
-                    const u = await User.findById(userId).select("name email mobile image");
+                    const u = await User.findById(userId).select("name email mobile image isBanned banReason role");
                     if (u) {
                         customerInfo = {
                             _id: u._id,
                             name: u.name,
                             email: u.email,
                             mobile: u.mobile,
-                            image: u.image
+                            image: u.image,
+                            isBanned: Boolean(u.isBanned),
+                            banReason: u.banReason || "",
+                            role: u.role || "user"
                         };
                     }
                 }
@@ -66,7 +69,7 @@ export async function GET(req: NextRequest) {
             else if (roomId.startsWith("store_")) {
                 const orderId = roomId.replace("store_", "");
                 if (mongoose.Types.ObjectId.isValid(orderId)) {
-                    const ord = await Order.findById(orderId).populate("user", "name email mobile image");
+                    const ord = await Order.findById(orderId).populate("user", "name email mobile image isBanned banReason role");
                     if (ord) {
                         orderInfo = {
                             _id: ord._id,
@@ -80,25 +83,31 @@ export async function GET(req: NextRequest) {
                                 name: (ord.user as any).name,
                                 email: (ord.user as any).email,
                                 mobile: (ord.user as any).mobile,
-                                image: (ord.user as any).image
+                                image: (ord.user as any).image,
+                                isBanned: Boolean((ord.user as any).isBanned),
+                                banReason: (ord.user as any).banReason || "",
+                                role: (ord.user as any).role || "user"
                             };
                         }
                     }
                 }
-            }
+            } 
 
             // Fallback: If customerInfo is still null, look at the sender of the non-admin message
             if (!customerInfo) {
                 const userMsg = msgs.find(m => m.senderRole !== "admin");
                 if (userMsg && userMsg.senderId && mongoose.Types.ObjectId.isValid(userMsg.senderId)) {
-                    const u = await User.findById(userMsg.senderId).select("name email mobile image");
+                    const u = await User.findById(userMsg.senderId).select("name email mobile image isBanned banReason role");
                     if (u) {
                         customerInfo = {
                             _id: u._id,
                             name: u.name,
                             email: u.email,
                             mobile: u.mobile,
-                            image: u.image
+                            image: u.image,
+                            isBanned: Boolean(u.isBanned),
+                            banReason: u.banReason || "",
+                            role: u.role || "user"
                         };
                     }
                 }

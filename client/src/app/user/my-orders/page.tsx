@@ -1,5 +1,6 @@
 import connectDb from "@/lib/db";
 import Order from "@/models/order.model";
+import User from "@/models/user.model";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import UserOrderCard from "@/components/UserOrderCard";
@@ -15,6 +16,10 @@ export default async function MyOrdersPage() {
     }
 
     const userId = session.user?.id || (session.user as any)?._id;
+    const dbUser = await User.findById(userId);
+    if (dbUser?.isBanned) {
+        redirect("/account-suspended");
+    }
 
     // Find orders by user id (checking both string and ObjectId formats)
     const orders = await Order.find({

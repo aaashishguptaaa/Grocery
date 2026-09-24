@@ -5,7 +5,7 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
-    ArrowLeft, Bot, Check, CheckCheck, Clock, 
+    AlertTriangle, ArrowLeft, Ban, Bot, Check, CheckCheck, CheckCircle2, Clock, 
     MessageSquare, Package, Phone, RefreshCw, 
     Search, Send, Sparkles, Store, Trash2, User, Volume2, 
     VolumeX, X 
@@ -20,6 +20,9 @@ interface Customer {
     email?: string
     mobile?: string
     image?: string
+    isBanned?: boolean
+    banReason?: string
+    role?: string
 }
 
 interface Conversation {
@@ -284,6 +287,54 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
         } catch (error) {
             console.error('Failed to delete chat:', error)
             toast.error('Failed to delete conversation')
+        }
+    }
+
+    // Ban or unban customer directly from chat center
+    const handleToggleCustomerBan = async (customer: Customer) => {
+        if (!customer?._id || customer._id === 'unknown') {
+            toast.error("User ID not available for this conversation.")
+            return
+        }
+        const isCurrentlyBanned = Boolean(customer.isBanned)
+
+        if (isCurrentlyBanned) {
+            if (!confirm(`Are you sure you want to UNBAN ${customer.name}? Their store access will be restored immediately.`)) return
+            try {
+                await axios.post('/api/admin/toggle-ban', {
+                    userId: customer._id,
+                    isBanned: false
+                })
+                setConversations(prev => prev.map(c => {
+                    if (c.customer?._id === customer._id) {
+                        return { ...c, customer: { ...c.customer, isBanned: false, banReason: "" } }
+                    }
+                    return c
+                }))
+                toast.success(`✅ ${customer.name} unbanned successfully!`)
+            } catch (e: any) {
+                toast.error(e.response?.data?.message || "Failed to unban user")
+            }
+        } else {
+            const reason = prompt(`Enter reason for banning ${customer.name} (shown to them):`, "Violation of store conduct policies")
+            if (reason === null) return
+            const trimmedReason = reason.trim() || "Violation of store conduct policies"
+            try {
+                await axios.post('/api/admin/toggle-ban', {
+                    userId: customer._id,
+                    isBanned: true,
+                    banReason: trimmedReason
+                })
+                setConversations(prev => prev.map(c => {
+                    if (c.customer?._id === customer._id) {
+                        return { ...c, customer: { ...c.customer, isBanned: true, banReason: trimmedReason } }
+                    }
+                    return c
+                }))
+                toast.error(`🚫 ${customer.name} has been banned from the store.`)
+            } catch (e: any) {
+                toast.error(e.response?.data?.message || "Failed to ban user")
+            }
         }
     }
 
@@ -581,8 +632,13 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                             {/* Details */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between gap-1">
-                                                    <h4 className={`text-xs font-black truncate ${isSelected ? 'text-emerald-950' : 'text-gray-800'}`}>
-                                                        {conv.customer?.name || 'Customer'}
+                                                    <h4 className={`text-xs font-black truncate flex items-center gap-1.5 ${isSelected ? 'text-emerald-950' : 'text-gray-800'}`}>
+                                                        <span>{conv.customer?.name || 'Customer'}</span>
+                                                        {conv.customer?.isBanned && (
+                                                            <span className="text-[9px] font-black bg-rose-600 text-white px-1.5 py-0.5 rounded-full shrink-0">
+                                                                BANNED
+                                                            </span>
+                                                        )}
                                                     </h4>
                                                     <span className="text-[10px] text-gray-400 shrink-0 font-medium">
                                                         {conv.lastMessage.time}
@@ -635,8 +691,14 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                         </div>
                                         <div>
                                             <h3 className="text-sm font-black text-gray-800 flex items-center gap-2">
-                                                {selectedConversation.customer?.name || 'Customer'}
-                                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                <span>{selectedConversation.customer?.name || 'Customer'}</span>
+                                                {selectedConversation.customer?.isBanned ? (
+                                                    <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                                                        <Ban size={11} /> BANNED
+                                                    </span>
+                                                ) : (
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                )}
                                             </h3>
                                             <p className="text-xs text-gray-500 flex items-center gap-2">
                                                 <span>{selectedConversation.customer?.mobile || 'No Phone'}</span>
@@ -652,6 +714,31 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
 
                                     {/* Action Buttons */}
                                     <div className="flex items-center gap-2 flex-wrap justify-end">
+                                        {/* Ban / Unban Account Button */}
+                                        {selectedConversation.customer?._id && selectedConversation.customer._id !== 'unknown' && (
+                                            selectedConversation.customer?.isBanned ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleCustomerBan(selectedConversation.customer)}
+                                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
+                                                    title="Unban customer and restore their platform access"
+                                                >
+                                                    <CheckCircle2 size={13} />
+                                                    <span>Unban User</span>
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleCustomerBan(selectedConversation.customer)}
+                                                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 border border-rose-200 cursor-pointer active:scale-95"
+                                                    title="Ban customer from store access"
+                                                >
+                                                    <Ban size={13} />
+                                                    <span className="hidden sm:inline">Ban User</span>
+                                                </button>
+                                            )
+                                        )}
+
                                         {/* Mark as Read Button */}
                                         <button
                                             type="button"
@@ -712,6 +799,23 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Suspended Account Warning Banner */}
+                                {selectedConversation.customer?.isBanned && (
+                                    <div className="bg-rose-50 border-b border-rose-200 px-4 py-2.5 flex items-center justify-between text-xs text-rose-900 shrink-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-black px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px]">
+                                                RESTRICTED / BANNED
+                                            </span>
+                                            <span className="font-bold">
+                                                Reason: {selectedConversation.customer.banReason || 'Store policy violation'}
+                                            </span>
+                                        </div>
+                                        <span className="text-[11px] text-rose-600 font-semibold hidden md:inline">
+                                            User is on the appeal screen and can read & reply to your messages
+                                        </span>
+                                    </div>
+                                )}
 
                                 {/* Order summary ribbon if order related */}
                                 {selectedConversation.order && (

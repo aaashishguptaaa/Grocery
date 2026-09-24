@@ -30,6 +30,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "User not logged in or missing" }, { status: 400 });
         }
 
+        const dbUser = await User.findById(userId);
+        if (dbUser?.isBanned) {
+            return NextResponse.json({ 
+                message: `Account Restricted: ${dbUser.banReason || 'Policy violation'}. You cannot place orders while your account is suspended.` 
+            }, { status: 403 });
+        }
+
         if (!items || items.length === 0) {
             return NextResponse.json({ message: "Cart items are required" }, { status: 400 });
         }

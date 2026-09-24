@@ -3,6 +3,7 @@ import connectDb from "@/lib/db";
 import emitEventHandler from "@/lib/emitEventHandler";
 import DeliveryAssignment from "@/models/deliveryAssignment.model";
 import Order from "@/models/order.model";
+import User from "@/models/user.model";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req:NextRequest,context: { params: Promise<{ id: string; }>; }) {
@@ -13,6 +14,13 @@ export async function GET(req:NextRequest,context: { params: Promise<{ id: strin
         const deliveryBoyId=session?.user?.id
         if(!deliveryBoyId){
             return NextResponse.json({message:"unauthorize"},{status:400})
+        }
+
+        const rider = await User.findById(deliveryBoyId);
+        if (rider?.isBanned) {
+            return NextResponse.json({ 
+                message: `Account restricted: ${rider.banReason || 'Policy violation'}. You cannot accept delivery orders.` 
+            }, { status: 403 });
         }
 
         const assignment=await DeliveryAssignment.findById(id)

@@ -42,11 +42,14 @@ export default function CheckOut() {
     const [fullAddress, setFullAddress] = useState("")
 
     useEffect(() => {
+        if (userData?.isBanned) {
+            router.push('/account-suspended')
+        }
         if (userData) {
             setFullName(userData.name || "")
             setMobile(userData.mobile || "")
         }
-    }, [userData])
+    }, [userData, router])
 
     // Load Razorpay Checkout Script
     useEffect(() => {

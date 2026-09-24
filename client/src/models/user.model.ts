@@ -44,6 +44,10 @@ export interface IUser {
         storePhone?: string;
         storeAddress?: string;
     };
+    // Ban & restriction status
+    isBanned?: boolean;
+    banReason?: string;
+    bannedAt?: Date;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -144,6 +148,18 @@ const userSchema = new mongoose.Schema<IUser>({
             type: Number,
             default: 81.8463,
         },
+    },
+    isBanned: {
+        type: Boolean,
+        default: false,
+    },
+    banReason: {
+        type: String,
+        default: "",
+    },
+    bannedAt: {
+        type: Date,
+        default: null,
     },
 }, { timestamps: true });
 

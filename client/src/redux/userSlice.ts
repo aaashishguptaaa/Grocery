@@ -8,6 +8,8 @@ interface IUser{
     mobile?:string
     role:"user" | "deliveryBoy" | "admin"
     image?:string
+    isBanned?:boolean
+    banReason?:string
 }
 interface IUserSlice{
     userData:IUser | null

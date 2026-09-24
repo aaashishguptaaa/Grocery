@@ -8,6 +8,7 @@ import Nav from '@/components/Nav'
 import UserDashboard from '@/components/UserDashboard'
 import connectDb from '@/lib/db'
 import Grocery, { IGrocery } from '@/models/grocery.model'
+import SuspendedAccount from '@/components/SuspendedAccount'
 import User from '@/models/user.model'
 import { redirect } from 'next/navigation'
 
@@ -30,6 +31,9 @@ async function Home(props: {
     if (userId) {
       const user = await User.findById(userId)
       if (user) {
+        if (user.isBanned) {
+          return <SuspendedAccount user={JSON.parse(JSON.stringify(user))} />
+        }
         const inComplete = !user.mobile || !user.role || (!user.mobile && user.role === "user")
         if (inComplete) {
           return <EditRoleMobile />

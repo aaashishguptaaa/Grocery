@@ -3,7 +3,11 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { motion } from 'motion/react'
-import { ArrowLeft, Bike, Crown, Loader2, MessageSquare, Phone, Search, ShieldCheck, Trash2, User, Users } from 'lucide-react'
+import { 
+    AlertTriangle, ArrowLeft, Ban, Bike, CheckCircle2, 
+    Crown, Loader2, MessageSquare, Phone, Search, 
+    ShieldAlert, ShieldCheck, Trash2, User, UserX, Users 
+} from 'lucide-react'
 import Link from 'next/link'
 
 interface IUser {
@@ -13,12 +17,15 @@ interface IUser {
     mobile?: string
     role: "user" | "deliveryBoy" | "admin"
     isOnline?: boolean
+    isBanned?: boolean
+    banReason?: string
+    bannedAt?: string
 }
 
 export default function ManageUsers() {
     const [users, setUsers] = useState<IUser[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<"deliveryBoy" | "admin" | "user">("deliveryBoy")
+    const [activeTab, setActiveTab] = useState<"deliveryBoy" | "admin" | "user" | "banned">("deliveryBoy")
     const [searchQuery, setSearchQuery] = useState("")
     const [updatingId, setUpdatingId] = useState<string | null>(null)
 
@@ -58,16 +65,68 @@ export default function ManageUsers() {
         }
     }
 
-    const deliveryBoys = users.filter(u => u.role === "deliveryBoy")
+    const handleToggleBan = async (userItem: IUser) => {
+        const isCurrentlyBanned = Boolean(userItem.isBanned)
+
+        if (isCurrentlyBanned) {
+            // UNBAN flow
+            if (!confirm(`Are you sure you want to UNBAN ${userItem.name}? Their account access will be restored immediately.`)) return
+            setUpdatingId(userItem._id)
+            try {
+                const res = await axios.post('/api/admin/toggle-ban', {
+                    userId: userItem._id,
+                    isBanned: false
+                })
+                setUsers(prev => prev.map(u => u._id === userItem._id ? { ...u, isBanned: false, banReason: "" } : u))
+                alert(`✅ ${userItem.name} has been unbanned successfully!`)
+            } catch (e: any) {
+                console.error(e)
+                alert(e.response?.data?.message || "Failed to unban user.")
+            } finally {
+                setUpdatingId(null)
+            }
+        } else {
+            // BAN flow
+            const reason = prompt(
+                `Enter reason for suspending ${userItem.name}'s account (this will be displayed to the user):`,
+                "Violation of store safety and conduct policies"
+            )
+            if (reason === null) return // User cancelled prompt
+
+            const trimmedReason = reason.trim() || "Violation of store safety and conduct policies"
+            setUpdatingId(userItem._id)
+            try {
+                await axios.post('/api/admin/toggle-ban', {
+                    userId: userItem._id,
+                    isBanned: true,
+                    banReason: trimmedReason
+                })
+                setUsers(prev => prev.map(u => u._id === userItem._id ? { ...u, isBanned: true, banReason: trimmedReason } : u))
+                alert(`🚫 ${userItem.name} has been banned from the app. They can now only access the support appeal chat.`)
+            } catch (e: any) {
+                console.error(e)
+                alert(e.response?.data?.message || "Failed to ban user.")
+            } finally {
+                setUpdatingId(null)
+            }
+        }
+    }
+
+    const deliveryBoys = users.filter(u => u.role === "deliveryBoy" && !u.isBanned)
     const admins = users.filter(u => u.role === "admin")
-    const regularUsers = users.filter(u => u.role === "user")
+    const regularUsers = users.filter(u => u.role === "user" && !u.isBanned)
+    const bannedUsers = users.filter(u => Boolean(u.isBanned))
 
     const displayedUsers = users.filter(u => {
-        const matchesTab = u.role === activeTab
+        const matchesTab = activeTab === "banned" 
+            ? Boolean(u.isBanned)
+            : u.role === activeTab && !u.isBanned
+
         const matchesSearch = searchQuery.trim() === "" || 
             u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            u.mobile?.includes(searchQuery)
+            u.mobile?.includes(searchQuery) ||
+            (u.banReason || "").toLowerCase().includes(searchQuery.toLowerCase())
 
         if (searchQuery.trim() !== "") {
             return matchesSearch
@@ -106,7 +165,7 @@ export default function ManageUsers() {
                                 Manage Staff & Users
                             </h1>
                             <p className="text-xs sm:text-sm text-gray-400 font-medium mt-0.5">
-                                Promote delivery riders, assign store admins, and view customer directories.
+                                Promote delivery riders, assign store admins, ban rule-breakers, and unban on appeal.
                             </p>
                         </div>
                     </div>
@@ -116,14 +175,14 @@ export default function ManageUsers() {
                             href="/admin/customer-chats"
                             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow-sm transition whitespace-nowrap"
                         >
-                            <MessageSquare size={15} /> Support Chats
+                            <MessageSquare size={15} /> Support & Appeal Chats
                         </Link>
                         {/* Search Bar */}
                         <div className="relative flex-1 sm:w-64">
                             <Search className="absolute left-3.5 top-3 text-gray-400 w-4 h-4" />
                             <input
                                 type="text"
-                                placeholder="Search by name, email, phone..."
+                                placeholder="Search name, email, phone..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50/80 hover:bg-white focus:bg-white rounded-2xl border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none text-xs font-semibold shadow-2xs transition"
@@ -133,11 +192,11 @@ export default function ManageUsers() {
                 </div>
 
                 {/* Metric Summary Strip */}
-                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                         <span className="text-2xl">🛵</span>
                         <div className="text-xl sm:text-2xl font-black text-gray-800 mt-1">{deliveryBoys.length}</div>
-                        <div className="text-[11px] sm:text-xs font-bold text-gray-500">Delivery Fleet</div>
+                        <div className="text-[11px] sm:text-xs font-bold text-gray-500">Active Delivery Fleet</div>
                     </div>
                     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                         <span className="text-2xl">👑</span>
@@ -147,37 +206,51 @@ export default function ManageUsers() {
                     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                         <span className="text-2xl">👥</span>
                         <div className="text-xl sm:text-2xl font-black text-gray-800 mt-1">{regularUsers.length}</div>
-                        <div className="text-[11px] sm:text-xs font-bold text-gray-500">Registered Users</div>
+                        <div className="text-[11px] sm:text-xs font-bold text-gray-500">Active Customers</div>
+                    </div>
+                    <div className="bg-rose-50/70 rounded-2xl p-4 border border-rose-100 shadow-sm text-center">
+                        <span className="text-2xl">🚫</span>
+                        <div className="text-xl sm:text-2xl font-black text-rose-700 mt-1">{bannedUsers.length}</div>
+                        <div className="text-[11px] sm:text-xs font-bold text-rose-600">Restricted / Banned</div>
                     </div>
                 </div>
 
                 {/* Filter Tabs */}
-                <div className="flex bg-gray-100/80 p-1.5 rounded-2xl gap-1.5 text-xs font-bold border border-gray-200/60">
+                <div className="flex bg-gray-100/80 p-1.5 rounded-2xl gap-1.5 text-xs font-bold border border-gray-200/60 overflow-x-auto">
                     <button
                         onClick={() => { setActiveTab("deliveryBoy"); setSearchQuery(""); }}
-                        className={`flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`flex-1 min-w-[130px] py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             activeTab === "deliveryBoy" && searchQuery === "" ? "bg-white text-green-700 shadow-md font-black" : "text-gray-500 hover:text-gray-800"
                         }`}
                     >
-                        <Bike size={16} /> 🛵 Delivery Partners ({deliveryBoys.length})
+                        <Bike size={15} /> 🛵 Delivery Partners ({deliveryBoys.length})
                     </button>
 
                     <button
                         onClick={() => { setActiveTab("admin"); setSearchQuery(""); }}
-                        className={`flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`flex-1 min-w-[110px] py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             activeTab === "admin" && searchQuery === "" ? "bg-white text-green-700 shadow-md font-black" : "text-gray-500 hover:text-gray-800"
                         }`}
                     >
-                        <Crown size={16} /> 👑 Admins ({admins.length})
+                        <Crown size={15} /> 👑 Admins ({admins.length})
                     </button>
 
                     <button
                         onClick={() => { setActiveTab("user"); setSearchQuery(""); }}
-                        className={`flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`flex-1 min-w-[110px] py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             activeTab === "user" && searchQuery === "" ? "bg-white text-green-700 shadow-md font-black" : "text-gray-500 hover:text-gray-800"
                         }`}
                     >
-                        <User size={16} /> 👥 All Customers ({regularUsers.length})
+                        <User size={15} /> 👥 Customers ({regularUsers.length})
+                    </button>
+
+                    <button
+                        onClick={() => { setActiveTab("banned"); setSearchQuery(""); }}
+                        className={`flex-1 min-w-[120px] py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            activeTab === "banned" && searchQuery === "" ? "bg-rose-600 text-white shadow-md font-black" : "text-rose-600 hover:text-rose-800"
+                        }`}
+                    >
+                        <Ban size={15} /> 🚫 Banned / Blocked ({bannedUsers.length})
                     </button>
                 </div>
 
@@ -189,29 +262,48 @@ export default function ManageUsers() {
                                 key={item._id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:shadow-md transition-all"
+                                className={`bg-white rounded-2xl p-4 sm:p-5 border shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:shadow-md transition-all ${
+                                    item.isBanned ? 'border-rose-200 bg-rose-50/20' : 'border-gray-100'
+                                }`}
                             >
                                 <div className="flex items-center gap-3.5">
                                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 ${
+                                        item.isBanned ? 'bg-rose-100 text-rose-700' :
                                         item.role === 'admin' ? 'bg-amber-100 text-amber-800' :
                                         item.role === 'deliveryBoy' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                                     }`}>
-                                        {item.name?.charAt(0).toUpperCase() || "U"}
+                                        {item.isBanned ? '🚫' : (item.name?.charAt(0).toUpperCase() || "U")}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <h3 className="font-black text-gray-800 text-sm sm:text-base">{item.name}</h3>
-                                            <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                                                item.role === 'admin' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                                                item.role === 'deliveryBoy' ? (item.isOnline ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-200') : 'bg-gray-100 text-gray-600'
-                                            }`}>
-                                                {item.role === 'deliveryBoy' ? (item.isOnline ? '🟢 Online Partner' : '🔴 Offline Partner') : item.role === 'admin' ? '👑 Store Admin' : '👤 Customer'}
-                                            </span>
+                                            
+                                            {item.isBanned ? (
+                                                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-rose-600 text-white shadow-xs">
+                                                    🚫 Restricted / Banned
+                                                </span>
+                                            ) : (
+                                                <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                                                    item.role === 'admin' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                                                    item.role === 'deliveryBoy' ? (item.isOnline ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-200') : 'bg-gray-100 text-gray-600'
+                                                }`}>
+                                                    {item.role === 'deliveryBoy' ? (item.isOnline ? '🟢 Online Partner' : '🔴 Offline Partner') : item.role === 'admin' ? '👑 Store Admin' : '👤 Customer'}
+                                                </span>
+                                            )}
                                         </div>
+
                                         <p className="text-xs text-gray-400 font-medium mt-0.5">{item.email}</p>
+                                        
                                         {item.mobile && (
                                             <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5 font-semibold">
                                                 <Phone size={12} className="text-gray-400" /> {item.mobile}
+                                            </p>
+                                        )}
+
+                                        {item.isBanned && item.banReason && (
+                                            <p className="text-xs text-rose-700 bg-rose-100/70 border border-rose-200 px-2.5 py-1 rounded-lg mt-1.5 font-semibold inline-flex items-center gap-1">
+                                                <AlertTriangle size={12} className="shrink-0" />
+                                                <span>Reason: <b>{item.banReason}</b></span>
                                             </p>
                                         )}
                                     </div>
@@ -223,63 +315,95 @@ export default function ManageUsers() {
                                         <Loader2 size={16} className="animate-spin text-green-600 mr-1" />
                                     )}
 
-                                    {/* If Customer: Can make Admin OR Delivery Boy */}
-                                    {item.role === "user" && (
+                                    {/* If User is BANNED: Show Unban Button & Chat Appeal Link */}
+                                    {item.isBanned ? (
                                         <>
-                                            <button
-                                                onClick={() => handleRoleChange(item._id, "deliveryBoy")}
-                                                disabled={updatingId === item._id}
-                                                className="px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
+                                            <Link
+                                                href={`/admin/customer-chats`}
+                                                className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                                             >
-                                                <Bike size={14} /> + Make Partner
-                                            </button>
+                                                <MessageSquare size={13} /> View Appeal Chat
+                                            </Link>
 
                                             <button
-                                                onClick={() => handleRoleChange(item._id, "admin")}
+                                                onClick={() => handleToggleBan(item)}
                                                 disabled={updatingId === item._id}
-                                                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
+                                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
                                             >
-                                                <Crown size={14} /> + Make Admin
+                                                <CheckCircle2 size={14} /> Unban Account
                                             </button>
                                         </>
-                                    )}
-
-                                    {/* If Delivery Partner: Can Remove or Promote to Admin */}
-                                    {item.role === "deliveryBoy" && (
+                                    ) : (
                                         <>
-                                            <button
-                                                onClick={() => handleRoleChange(item._id, "admin")}
-                                                disabled={updatingId === item._id}
-                                                className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-amber-200 active:scale-95 disabled:opacity-50"
-                                            >
-                                                <Crown size={14} /> Promote to Admin
-                                            </button>
+                                            {/* Role actions if NOT banned */}
+                                            {item.role === "user" && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleRoleChange(item._id, "deliveryBoy")}
+                                                        disabled={updatingId === item._id}
+                                                        className="px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 border border-green-200"
+                                                    >
+                                                        <Bike size={13} /> + Partner
+                                                    </button>
 
-                                            <button
-                                                onClick={() => handleRoleChange(item._id, "user")}
-                                                disabled={updatingId === item._id}
-                                                className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
-                                            >
-                                                <Trash2 size={14} /> Remove Partner
-                                            </button>
+                                                    <button
+                                                        onClick={() => handleRoleChange(item._id, "admin")}
+                                                        disabled={updatingId === item._id}
+                                                        className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 border border-amber-200"
+                                                    >
+                                                        <Crown size={13} /> + Admin
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {item.role === "deliveryBoy" && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleRoleChange(item._id, "admin")}
+                                                        disabled={updatingId === item._id}
+                                                        className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-amber-200 active:scale-95 disabled:opacity-50"
+                                                    >
+                                                        <Crown size={13} /> Promote to Admin
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleRoleChange(item._id, "user")}
+                                                        disabled={updatingId === item._id}
+                                                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                                    >
+                                                        Demote to User
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {item.role === "admin" && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 flex items-center gap-1.5">
+                                                        <ShieldCheck size={14} className="text-amber-600" /> Active Store Admin
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleRoleChange(item._id, "user")}
+                                                        disabled={updatingId === item._id}
+                                                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 disabled:opacity-50"
+                                                        title="Demote to Customer"
+                                                    >
+                                                        Demote
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Ban Button (Allowed for non-admin accounts) */}
+                                            {item.role !== "admin" && (
+                                                <button
+                                                    onClick={() => handleToggleBan(item)}
+                                                    disabled={updatingId === item._id}
+                                                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-rose-200 active:scale-95 disabled:opacity-50"
+                                                    title={item.role === "deliveryBoy" ? "Ban delivery partner from assignments" : "Ban customer from storefront access"}
+                                                >
+                                                    <UserX size={13} /> Ban Account
+                                                </button>
+                                            )}
                                         </>
-                                    )}
-
-                                    {/* If Admin: Show badge and optional remove */}
-                                    {item.role === "admin" && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3.5 py-2 rounded-xl border border-amber-200 flex items-center gap-1.5">
-                                                <ShieldCheck size={15} className="text-amber-600" /> Active Store Admin
-                                            </span>
-                                            <button
-                                                onClick={() => handleRoleChange(item._id, "user")}
-                                                disabled={updatingId === item._id}
-                                                className="px-3 py-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 disabled:opacity-50"
-                                                title="Demote to Customer"
-                                            >
-                                                Demote
-                                            </button>
-                                        </div>
                                     )}
                                 </div>
                             </motion.div>
@@ -288,7 +412,11 @@ export default function ManageUsers() {
                         <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm space-y-2">
                             <Users size={40} className="text-gray-300 mx-auto" />
                             <h3 className="text-base font-bold text-gray-700">No users found in this section</h3>
-                            <p className="text-xs text-gray-400">Try switching tabs or searching with another keyword.</p>
+                            <p className="text-xs text-gray-400">
+                                {activeTab === "banned" 
+                                    ? "There are currently no restricted or banned accounts. All users are in good standing!" 
+                                    : "Try switching tabs or searching with another keyword."}
+                            </p>
                         </div>
                     )}
                 </div>
