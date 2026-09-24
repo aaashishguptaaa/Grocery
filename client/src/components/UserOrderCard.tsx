@@ -166,9 +166,9 @@ export default function UserOrderCard({ order }: { order: any }) {
     const isPaid = order.isPaid || order.paymentMethod === 'online'
     const isDelivered = orderStatus === "delivered"
     const isCancelled = orderStatus === "cancelled"
-    const isOutForDelivery = orderStatus === "out of delivery"
-    const isArrivedAtMart = order.riderArrivedAtMart || orderStatus === "arrived_at_mart"
-    const isAssigned = orderStatus === "assigned"
+    const isOutForDelivery = !isDelivered && !isCancelled && orderStatus === "out of delivery"
+    const isArrivedAtMart = !isDelivered && !isCancelled && Boolean(order.riderArrivedAtMart || orderStatus === "arrived_at_mart")
+    const isAssigned = !isDelivered && !isCancelled && orderStatus === "assigned"
     const partnerId = assignedRider?._id || assignedRider
     const partnerName = assignedRider?.name || order.assignedDeliveryBoy?.name || "Delivery Partner"
     const partnerMobile = assignedRider?.mobile || order.assignedDeliveryBoy?.mobile || ""
@@ -298,7 +298,17 @@ export default function UserOrderCard({ order }: { order: any }) {
 
                         {/* Notification Status Icon & Badge */}
                         <div className="flex items-center gap-1.5">
-                            {isAtDoorstep ? (
+                            {isDelivered ? (
+                                <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5 bg-green-100 text-green-800 border border-green-200">
+                                    <CheckCircle2 size={13} className="text-green-600" />
+                                    <span>✅ Delivered</span>
+                                </span>
+                            ) : isCancelled ? (
+                                <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-800 border border-red-200">
+                                    <XCircle size={13} className="text-red-600" />
+                                    <span>❌ Cancelled</span>
+                                </span>
+                            ) : isAtDoorstep ? (
                                 <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-700 border border-red-300 animate-pulse">
                                     <BellRing size={13} className="text-red-600 animate-bounce" />
                                     <span>🔔 At Your Doorstep</span>
@@ -317,16 +327,6 @@ export default function UserOrderCard({ order }: { order: any }) {
                                 <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5 bg-purple-100 text-purple-800 border border-purple-200">
                                     <Truck size={13} className="text-purple-600" />
                                     <span>🛵 Partner Assigned</span>
-                                </span>
-                            ) : isDelivered ? (
-                                <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5 bg-green-100 text-green-800 border border-green-200">
-                                    <CheckCircle2 size={13} className="text-green-600" />
-                                    <span>✅ Delivered</span>
-                                </span>
-                            ) : isCancelled ? (
-                                <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-800 border border-red-200">
-                                    <XCircle size={13} className="text-red-600" />
-                                    <span>❌ Cancelled</span>
                                 </span>
                             ) : (
                                 <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200">

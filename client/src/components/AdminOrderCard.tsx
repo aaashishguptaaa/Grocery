@@ -85,6 +85,15 @@ export default function AdminOrderCard({
     const [savingFee, setSavingFee] = useState(false)
     const [chatOpen, setChatOpen] = useState(false)
 
+    // Synchronize local states when order prop changes (e.g. from parent polling or re-fetch)
+    useEffect(() => {
+        if (order.status) setStatus(order.status)
+        if (order.isPaid !== undefined) setIsPaid(order.isPaid)
+        if (order.assignedDeliveryBoy?._id) setAssignedDeliveryBoy(order.assignedDeliveryBoy._id)
+        setRiderArrivedAtMart(Boolean(order.riderArrivedAtMart || order.status === "arrived_at_mart"))
+        setHandoverConfirmed(Boolean(order.handoverConfirmed || order.status === "out of delivery"))
+    }, [order.status, order.isPaid, order.assignedDeliveryBoy, order.riderArrivedAtMart, order.handoverConfirmed])
+
     // Formatted Dates
     const placedDate = formatDate(order.createdAt)
     const placedTime = formatTime(order.createdAt)
@@ -111,7 +120,7 @@ export default function AdminOrderCard({
 
     const closestBoy = deliveryBoysWithDistance.find(b => b.isOnline && b.distanceKm < 900)
 
-    // Listen for live socket arrival event
+    // Listen for live socket arrival & delivery completion events
     useEffect(() => {
         const socket = getSocket()
         if (!socket) return
@@ -130,11 +139,41 @@ export default function AdminOrderCard({
             }
         }
 
+        const handleDelivered = (data: any) => {
+            if (String(data?.orderId) === String(order._id)) {
+                setStatus("delivered")
+                setIsPaid(true)
+                setRiderArrivedAtMart(false)
+                setHandoverConfirmed(false)
+                toast.success(`✅ Order #${order._id.slice(-6).toUpperCase()} was delivered!`, { icon: '✅' })
+                onUpdate?.()
+            }
+        }
+
+        const handleStatusUpdate = (data: any) => {
+            if (String(data?.orderId) === String(order._id)) {
+                if (data?.status) {
+                    setStatus(data.status)
+                    if (data.status === 'delivered') {
+                        setIsPaid(true)
+                        setRiderArrivedAtMart(false)
+                        setHandoverConfirmed(false)
+                    }
+                }
+                onUpdate?.()
+            }
+        }
+
         socket.on("rider-arrived-at-mart", handleArrival)
+        socket.on("order-delivered", handleDelivered)
+        socket.on("order-status-update", handleStatusUpdate)
+
         return () => {
             socket.off("rider-arrived-at-mart", handleArrival)
+            socket.off("order-delivered", handleDelivered)
+            socket.off("order-status-update", handleStatusUpdate)
         }
-    }, [order._id])
+    }, [order._id, onUpdate])
 
     // Listen for new incoming orders
     useEffect(() => {
@@ -276,8 +315,10 @@ export default function AdminOrderCard({
         }
     }
 
-    const isRiderAtMart = riderArrivedAtMart || status === "arrived_at_mart"
-    const isDispatched = handoverConfirmed || status === "out of delivery"
+    const isDelivered = status === "delivered"
+    const isCancelled = status === "cancelled"
+    const isRiderAtMart = !isDelivered && !isCancelled && (riderArrivedAtMart || status === "arrived_at_mart")
+    const isDispatched = !isDelivered && !isCancelled && (handoverConfirmed || status === "out of delivery")
 
     return (
         <div suppressHydrationWarning className={`bg-white rounded-3xl p-6 border shadow-md space-y-4 transition ${

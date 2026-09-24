@@ -30,19 +30,26 @@ export async function POST(req:NextRequest) {
                 )
        }
 
-    order.status="delivered"
-    order.deliveryOtpVerification=true
-    order.deliveredAt=new Date()
+    order.status = "delivered"
+    order.isPaid = true
+    order.deliveryOtpVerification = true
+    order.deliveredAt = new Date()
     await order.save()
-await emitEventHandler("order-status-update",{orderId:order._id,status:order.status})
+
+    await emitEventHandler("order-status-update", { orderId: order._id, status: "delivered" })
+    await emitEventHandler("order-delivered", {
+        orderId: order._id,
+        orderNumber: order._id.toString().slice(-6).toUpperCase()
+    })
+
     await DeliveryAssignment.updateOne(
-        {order:orderId},
-        {$set:{assignedTo:null,status:"completed"}}
+        { order: orderId },
+        { $set: { assignedTo: null, status: "completed" } }
     )
- return NextResponse.json(
-                    {message:"Delivery successfully completed"},
-                    {status:200}
-                )
+    return NextResponse.json(
+        { message: "Delivery successfully completed" },
+        { status: 200 }
+    )
 
 
     } catch (error) {

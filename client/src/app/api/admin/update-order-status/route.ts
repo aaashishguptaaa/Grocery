@@ -181,6 +181,10 @@ export async function POST(req: NextRequest) {
                 orderNumber: order._id.toString().slice(-6).toUpperCase(),
                 riderName: updatedOrder.assignedDeliveryBoy?.name || 'Delivery Partner'
             });
+            await notifySocketServer('order-status-update', {
+                orderId: order._id,
+                status: 'delivered'
+            });
         }
         
         if (action === 'rider_at_doorstep') {
