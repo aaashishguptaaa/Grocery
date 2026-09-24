@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { 
     ArrowLeft, Bot, Check, CheckCheck, Clock, 
     MessageSquare, Package, Phone, RefreshCw, 
-    Search, Send, Sparkles, Store, User, Volume2, 
+    Search, Send, Sparkles, Store, Trash2, User, Volume2, 
     VolumeX, X 
 } from 'lucide-react'
 import Link from 'next/link'
@@ -105,11 +105,6 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
             const res = await axios.get('/api/admin/chat-conversations')
             if (Array.isArray(res.data)) {
                 setConversations(res.data)
-                // ONLY auto-select the first conversation on initial load if user has NOT selected any room yet
-                if (!selectedRoomIdRef.current && res.data.length > 0) {
-                    selectedRoomIdRef.current = res.data[0].roomId
-                    setSelectedRoomId(res.data[0].roomId)
-                }
             }
         } catch (error) {
             console.error('Failed to load conversations:', error)
@@ -248,6 +243,37 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
             toast.success('All conversations marked as read', { duration: 2500 })
         } catch (e) {
             console.error('Failed to mark all read:', e)
+        }
+    }
+
+    // Delete a single message from the active chat
+    const handleDeleteSingleMessage = async (messageId: string) => {
+        if (!confirm('Are you sure you want to delete this message?')) return
+        try {
+            await axios.delete('/api/chat/messages', { data: { messageId } })
+            setMessages(prev => prev.filter(m => m._id !== messageId))
+            toast.success('Message deleted', { duration: 2000 })
+            fetchConversations(true)
+        } catch (error) {
+            console.error('Failed to delete message:', error)
+            toast.error('Failed to delete message')
+        }
+    }
+
+    // Delete entire conversation and all its messages
+    const handleDeleteEntireChat = async (roomId: string) => {
+        if (!confirm('Are you sure you want to delete this ENTIRE conversation? All messages will be permanently removed.')) return
+        try {
+            await axios.delete('/api/chat/messages', { data: { roomId } })
+            toast.success('Conversation deleted', { duration: 2500 })
+            selectedRoomIdRef.current = null
+            setSelectedRoomId(null)
+            setMessages([])
+            setConversations(prev => prev.filter(c => c.roomId !== roomId))
+            fetchConversations(true)
+        } catch (error) {
+            console.error('Failed to delete chat:', error)
+            toast.error('Failed to delete conversation')
         }
     }
 
@@ -615,7 +641,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap justify-end">
                                         {/* Mark as Read Button */}
                                         <button
                                             type="button"
@@ -629,6 +655,31 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                         >
                                             <CheckCheck size={14} className={selectedConversation.unreadCount > 0 ? 'text-amber-700' : 'text-emerald-600'} />
                                             <span>{selectedConversation.unreadCount > 0 ? 'Mark Read' : 'Read'}</span>
+                                        </button>
+
+                                        {/* Delete Entire Chat */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteEntireChat(selectedConversation.roomId)}
+                                            className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl transition flex items-center gap-1.5 border border-red-200 cursor-pointer active:scale-95"
+                                            title="Delete entire chat history with this customer"
+                                        >
+                                            <Trash2 size={13} />
+                                            <span className="hidden sm:inline">Delete Chat</span>
+                                        </button>
+
+                                        {/* Close Chat Window */}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                selectedRoomIdRef.current = null
+                                                setSelectedRoomId(null)
+                                            }}
+                                            className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                            title="Close active chat window"
+                                        >
+                                            <X size={14} />
+                                            <span className="hidden sm:inline">Close</span>
                                         </button>
 
                                         {selectedConversation.customer?.mobile && (
@@ -688,17 +739,29 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                             return (
                                                 <div 
                                                     key={m._id || i}
-                                                    className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
+                                                    className={`group flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
                                                 >
                                                     <span className="text-[10px] text-gray-400 px-1 mb-0.5 font-medium">
                                                         {isAdmin ? 'Store Support' : (m.senderName || 'Customer')} • {m.time}
                                                     </span>
-                                                    <div className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
-                                                        isAdmin 
-                                                            ? 'bg-emerald-600 text-white rounded-tr-xs font-medium' 
-                                                            : 'bg-white text-gray-800 border border-gray-100 rounded-tl-xs'
-                                                    }`}>
-                                                        {m.text}
+                                                    <div className={`relative flex items-center gap-1.5 ${isAdmin ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                        <div className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
+                                                            isAdmin 
+                                                                ? 'bg-emerald-600 text-white rounded-tr-xs font-medium' 
+                                                                : 'bg-white text-gray-800 border border-gray-100 rounded-tl-xs'
+                                                        }`}>
+                                                            {m.text}
+                                                        </div>
+                                                        {m._id && !String(m._id).startsWith('temp_') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteSingleMessage(m._id)}
+                                                                className="opacity-0 group-hover:opacity-100 transition p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer shrink-0"
+                                                                title="Delete this message"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )
