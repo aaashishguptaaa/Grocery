@@ -332,6 +332,7 @@ export default function AdminSalesCalendar() {
                         </Link>
                         <Link
                             href="/admin/manage-orders"
+                            prefetch={true}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-300 transition shadow-xs"
                         >
                             <Package size={14} /> Manage Orders
@@ -811,6 +812,7 @@ export default function AdminSalesCalendar() {
                                             {/* Order link */}
                                             <Link
                                                 href={`/admin/manage-orders`}
+                                                prefetch={true}
                                                 className="inline-flex items-center gap-1 font-bold text-green-700 hover:text-green-800 text-[11px] underline underline-offset-2"
                                             >
                                                 Order #{p.orderShortCode} <ExternalLink size={11} />

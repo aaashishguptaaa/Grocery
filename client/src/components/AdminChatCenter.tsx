@@ -795,6 +795,7 @@ export default function AdminChatCenter({ currentUser }: { currentUser: any }) {
                                         {selectedConversation.order && (
                                             <Link
                                                 href={`/admin/manage-orders`}
+                                                prefetch={true}
                                                 className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5"
                                             >
                                                 <Package size={14} />

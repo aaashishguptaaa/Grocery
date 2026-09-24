@@ -186,6 +186,8 @@ const userSchema = new mongoose.Schema<IUser>({
 }, { timestamps: true });
 
 userSchema.index({ location: "2dsphere" });
+userSchema.index({ role: 1, isApproved: 1, isBanned: 1 });
+userSchema.index({ role: 1, isOnline: -1 });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 export default User;

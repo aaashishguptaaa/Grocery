@@ -88,5 +88,10 @@ const orderSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ assignedDeliveryBoy: 1, status: 1 });
+
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 export default Order;

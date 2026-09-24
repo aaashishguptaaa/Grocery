@@ -7,19 +7,22 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
     try {
-        await connectDb();
-        const session = await auth();
+        const [session] = await Promise.all([
+            auth(),
+            connectDb()
+        ]);
         const userRole = (session?.user as any)?.role;
 
         if (!session || userRole !== "admin") {
             return NextResponse.json({ message: "Unauthorized: Admin access required" }, { status: 401 });
         }
 
-        // Fetch all delivered orders
-        const deliveredOrders = await Order.find({ status: "delivered" })
+        // Fetch all delivered orders with .lean()
+        const deliveredOrders: any[] = await Order.find({ status: "delivered" })
             .populate("user", "name email mobile")
             .populate("assignedDeliveryBoy", "name mobile")
-            .sort({ deliveredAt: -1, createdAt: -1 });
+            .sort({ deliveredAt: -1, createdAt: -1 })
+            .lean();
 
         const deliveredProducts: any[] = [];
         const dailySummaryMap: Record<string, {

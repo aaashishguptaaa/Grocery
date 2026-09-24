@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
         const orders = await Order.find({})
             .populate("user", "name email mobile")
             .populate("assignedDeliveryBoy", "name mobile isOnline")
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
         return NextResponse.json(orders, { status: 200 });
     } catch (error) {
         return NextResponse.json(

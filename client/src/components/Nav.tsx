@@ -675,7 +675,7 @@ export default function Nav({ user }: { user: IUser }) {
                                 { href: "/admin/customer-chats", icon: MessageSquare, label: "Customer Chats", badge: adminUnreadChats },
                                 { href: "/profile", icon: User, label: "Profile Settings" },
                             ].map(({ href, icon: Icon, label, badge }) => (
-                                <Link key={href} href={href}
+                                <Link key={href} href={href} prefetch={true}
                                     className='flex items-center justify-between p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-95'
                                     onClick={() => setMenuOpen(false)}
                                 >
@@ -769,7 +769,7 @@ export default function Nav({ user }: { user: IUser }) {
                                 { href: "/admin/manage-users", icon: Users, label: "Users", badge: pendingApprovalsCount },
                                 { href: "/admin/customer-chats", icon: MessageSquare, label: "Customer Chats", badge: adminUnreadChats },
                             ].map(({ href, icon: Icon, label, badge }) => (
-                                <Link key={href} href={href}
+                                <Link key={href} href={href} prefetch={true}
                                     className='relative flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-semibold text-xs px-3 py-1.5 rounded-xl transition-all'
                                 >
                                     <Icon size={14} />{label}
