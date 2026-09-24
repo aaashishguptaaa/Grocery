@@ -81,6 +81,17 @@ io.on("connection", (socket) => {
             console.log("Chat save error (handled):", error.message)
         }
         io.to(message.roomId).emit("send-message", message)
+
+        // Handle order chat rooms: emit to both prefixed and raw formats, and broadcast order-chat-message
+        if (message.roomId && message.roomId.startsWith("order_")) {
+            const rawId = message.roomId.replace("order_", "")
+            io.to(rawId).emit("send-message", message)
+            io.emit("order-chat-message", { ...message, orderId: rawId })
+        } else if (message.roomId && !message.roomId.startsWith("store_")) {
+            io.to(`order_${message.roomId}`).emit("send-message", message)
+            io.emit("order-chat-message", { ...message, orderId: message.roomId })
+        }
+
         if (message.roomId && message.roomId.startsWith("store_")) {
             io.emit("admin-store-message", message)
         }

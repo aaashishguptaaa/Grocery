@@ -13,8 +13,11 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ unreadCount: 0 });
         }
 
+        const cleanId = String(roomId).replace(/^order_/, '');
+        const queryRooms = Array.from(new Set([String(roomId), cleanId, `order_${cleanId}`]));
+
         const count = await Message.countDocuments({
-            roomId: String(roomId),
+            roomId: { $in: queryRooms },
             senderRole: senderRole,
             isRead: false
         });
@@ -36,8 +39,11 @@ export async function POST(req: NextRequest) {
         }
 
         const role = senderRole || "admin";
+        const cleanId = String(roomId).replace(/^order_/, '');
+        const queryRooms = Array.from(new Set([String(roomId), cleanId, `order_${cleanId}`]));
+
         const result = await Message.updateMany(
-            { roomId: String(roomId), senderRole: role, isRead: false },
+            { roomId: { $in: queryRooms }, senderRole: role, isRead: false },
             { $set: { isRead: true } }
         );
 

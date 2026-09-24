@@ -124,12 +124,26 @@ export default function ChatModal({
         const socket = getSocket()
         if (socket) {
             socket.emit('join-room', roomId)
+            const cleanId = roomId.replace(/^order_/, '')
+            if (roomId.startsWith('order_')) {
+                socket.emit('join-room', cleanId)
+            } else if (!roomId.startsWith('store_')) {
+                socket.emit('join-room', `order_${cleanId}`)
+            }
 
             const handleIncoming = (msg: any) => {
-                if (String(msg?.roomId) === String(roomId)) {
+                const msgRoom = String(msg?.roomId || '')
+                const msgClean = msgRoom.replace(/^order_/, '')
+                const currentClean = roomId.replace(/^order_/, '')
+
+                const isMatch = msgRoom === String(roomId) || 
+                                (msgClean && msgClean === currentClean) ||
+                                (msg?.orderId && String(msg.orderId) === currentClean)
+
+                if (isMatch) {
                     setMessages(prev => {
                         // Prevent duplicates
-                        if (prev.some(m => m._id && msg._id && m._id === msg._id)) return prev
+                        if (prev.some(m => (m._id && msg._id && m._id === msg._id) || (m.time === msg.time && m.text === msg.text && String(m.senderId) === String(msg.senderId)))) return prev
                         return [...prev, msg]
                     })
                     scrollToBottom()
@@ -142,9 +156,11 @@ export default function ChatModal({
             }
 
             socket.on('send-message', handleIncoming)
+            socket.on('order-chat-message', handleIncoming)
             return () => {
                 isSubscribed = false
                 socket.off('send-message', handleIncoming)
+                socket.off('order-chat-message', handleIncoming)
             }
         }
 

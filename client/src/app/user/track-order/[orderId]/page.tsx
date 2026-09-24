@@ -109,19 +109,33 @@ socket.on("update-deliveryBoy-location",(data)=>{
 return ()=>socket.off("update-deliveryBoy-location")
 },[order])
 
- useEffect(() => {
+  useEffect(() => {
     const socket = getSocket()
+    const cleanId = String(orderId).replace(/^order_/, '')
     socket.emit("join-room", orderId)
-     socket.on("send-message",(message)=>{
-      if(message.roomId===orderId){
- setMessages((prev)=>[...prev!,message])
-      }
-    })
+    socket.emit("join-room", cleanId)
+    socket.emit("join-room", `order_${cleanId}`)
 
-    return ()=>{
-      socket.off("send-message")
+    const handleIncoming = (message: any) => {
+      const msgClean = String(message?.roomId || message?.orderId || '').replace(/^order_/, '')
+      if (message.roomId === orderId || msgClean === cleanId) {
+        setMessages((prev) => {
+          if (prev?.some(m => (m._id && message._id && m._id === message._id) || (m.time === message.time && m.text === message.text))) {
+            return prev
+          }
+          return [...(prev || []), message]
+        })
+      }
     }
-  }, [])
+
+    socket.on("send-message", handleIncoming)
+    socket.on("order-chat-message", handleIncoming)
+
+    return () => {
+      socket.off("send-message", handleIncoming)
+      socket.off("order-chat-message", handleIncoming)
+    }
+  }, [orderId])
 
   // 📡 Real-time status update listener
   useEffect(() => {
@@ -182,11 +196,16 @@ return ()=>socket.off("update-deliveryBoy-location")
 
   const sendMsg = () => {
     const socket = getSocket()
+    const cleanId = String(orderId).replace(/^order_/, '')
+    const targetRoom = `order_${cleanId}`
 
     const message = {
-      roomId: orderId,
+      roomId: targetRoom,
+      orderId: cleanId,
       text: newMessage,
       senderId: userData?._id,
+      senderRole: "user",
+      senderName: userData?.name || "Customer",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit"
@@ -206,7 +225,7 @@ return ()=>socket.off("update-deliveryBoy-location")
         }
       }
       getAllMessages()
-    }, [])
+    }, [orderId])
 
 useEffect(()=>{
     chatBoxRef.current?.scrollTo({

@@ -51,6 +51,7 @@ export default function Nav({ user }: { user: IUser }) {
     const [liveDispatchedAlert, setLiveDispatchedAlert] = useState<any>(null)
     const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([])
     const [clearedNotifKeys, setClearedNotifKeys] = useState<string[]>([])
+    const [riderMessages, setRiderMessages] = useState<{ [orderId: string]: { text: string, time: string, senderName: string, unread: number } }>({})
 
     // Load cleared notification keys from localStorage
     useEffect(() => {
@@ -184,6 +185,45 @@ export default function Nav({ user }: { user: IUser }) {
                     o.status === 'out of delivery'
                 )
                 setActiveDeliveries(active)
+
+                // Join socket rooms for all active delivery orders
+                const socket = getSocket()
+                if (socket) {
+                    res.data.filter((o: any) => o.status !== 'delivered' && o.status !== 'cancelled').forEach((ord: any) => {
+                        socket.emit("join-room", `order_${ord._id}`)
+                        socket.emit("join-room", String(ord._id))
+                    })
+                }
+
+                // Check for any unread rider messages across active deliveries
+                active.forEach(async (ord: any) => {
+                    try {
+                        const unreadRes = await axios.get(`/api/chat/unread?roomId=order_${ord._id}&senderRole=deliveryBoy`)
+                        const count = unreadRes.data?.unreadCount || 0
+                        if (count > 0) {
+                            setRiderMessages(prev => ({
+                                ...prev,
+                                [ord._id]: {
+                                    text: prev[ord._id]?.text || "New message from delivery partner",
+                                    time: prev[ord._id]?.time || "",
+                                    senderName: ord.assignedDeliveryBoy?.name || "Delivery Partner",
+                                    unread: count
+                                }
+                            }))
+                            // Un-dismiss if there are unread messages!
+                            setClearedNotifKeys(prev => {
+                                const updated = prev.filter(k => 
+                                    k !== String(ord._id) && 
+                                    !k.startsWith(`${ord._id}_`) && 
+                                    k !== `doorstep_${ord._id}`
+                                )
+                                try { localStorage.setItem('snapcart_cleared_notif_keys', JSON.stringify(updated)) } catch (e) {}
+                                return updated
+                            })
+                            setDismissedAlerts(prev => prev.filter(a => a !== 'out_for_delivery' && a !== 'doorstep'))
+                        }
+                    } catch (e) {}
+                })
             }
         } catch (e) {}
     }
@@ -226,47 +266,160 @@ export default function Nav({ user }: { user: IUser }) {
         const processedMsgIds = new Set<string>()
 
         const handleIncomingChatForCustomer = (msg: any) => {
-            if (!msg || !msg.roomId || msg.roomId !== customerRoomId) return
-            // Only process messages from admin / store support
-            if (msg.senderRole !== "admin") return
+            if (!msg || (!msg.roomId && !msg.orderId)) return
 
-            // Deduplicate if both send-message and admin-store-message fire
-            const msgKey = msg._id || `${msg.time}_${msg.text}`
-            if (processedMsgIds.has(msgKey)) return
-            processedMsgIds.add(msgKey)
+            // 1. Messages from Admin / Store Support
+            if (msg.roomId === customerRoomId) {
+                if (msg.senderRole !== "admin") return
 
-            // Play notification popup sound chime!
-            playChatNotificationChime()
+                const msgKey = msg._id || `${msg.time}_${msg.text}`
+                if (processedMsgIds.has(msgKey)) return
+                processedMsgIds.add(msgKey)
 
-            // If the chat modal is currently open for this room, mark read immediately
-            if (chatModalConfigRef.current?.isOpen && chatModalConfigRef.current?.roomId === customerRoomId) {
-                axios.post('/api/chat/unread', { roomId: customerRoomId, senderRole: 'admin' }).catch(() => {})
+                // Play notification popup sound chime!
+                playChatNotificationChime()
+
+                // If the chat modal is currently open for this room, mark read immediately
+                if (chatModalConfigRef.current?.isOpen && chatModalConfigRef.current?.roomId === customerRoomId) {
+                    axios.post('/api/chat/unread', { roomId: customerRoomId, senderRole: 'admin' }).catch(() => {})
+                    return
+                }
+
+                // Increment unread chat counter badge
+                setCustomerUnreadChats(prev => prev + 1)
+
+                // Show toast notification with direct click-to-open
+                toast((t) => (
+                    <div 
+                        onClick={() => {
+                            toast.dismiss(t.id)
+                            handleOpenCustomerStoreChat()
+                        }}
+                        className="flex items-center gap-3 cursor-pointer py-1"
+                    >
+                        <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center text-green-700 font-bold shrink-0">
+                            <Store size={18} />
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="text-xs font-bold text-gray-800">
+                                💬 Central Mart Store: <span className="font-normal text-gray-600 truncate">{msg.text}</span>
+                            </p>
+                            <p className="text-[10px] text-green-600 font-bold mt-0.5">Click to view & reply</p>
+                        </div>
+                    </div>
+                ), { duration: 6000, position: 'top-right' })
                 return
             }
 
-            // Increment unread chat counter badge
-            setCustomerUnreadChats(prev => prev + 1)
+            // 2. Messages from Delivery Boy for Customer Order
+            const rawRoomId = String(msg.roomId || '')
+            const isOrderChat = rawRoomId.startsWith("order_") || Boolean(msg.orderId)
+            const orderId = String(msg.orderId || rawRoomId.replace(/^order_/, ""))
+            const myId = String(user?._id || (user as any)?.id || "")
 
-            // Show toast notification with direct click-to-open
-            toast((t) => (
-                <div 
-                    onClick={() => {
-                        toast.dismiss(t.id)
-                        handleOpenCustomerStoreChat()
-                    }}
-                    className="flex items-center gap-3 cursor-pointer py-1"
-                >
-                    <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center text-green-700 font-bold shrink-0">
-                        <Store size={18} />
+            // Ignore messages sent by customer themself
+            if (msg.senderId && String(msg.senderId) === myId) return
+            if (msg.senderRole === "user") return
+
+            if (isOrderChat && orderId) {
+                const msgKey = msg._id || `rider_${orderId}_${msg.time}_${msg.text}`
+                if (processedMsgIds.has(msgKey)) return
+                processedMsgIds.add(msgKey)
+
+                // 🔔 WAKE UP THE NOTIFICATION: Remove from clearedNotifKeys & reset dismissed alerts!
+                setClearedNotifKeys(prev => {
+                    const updated = prev.filter(k => 
+                        k !== String(orderId) && 
+                        !k.startsWith(`${orderId}_`) && 
+                        k !== `doorstep_${orderId}`
+                    )
+                    try { localStorage.setItem('snapcart_cleared_notif_keys', JSON.stringify(updated)) } catch (e) {}
+                    return updated
+                })
+                setDismissedAlerts(prev => prev.filter(a => a !== 'out_for_delivery' && a !== 'doorstep'))
+
+                // Refresh orders
+                fetchActiveOrders()
+
+                // Play pleasant notification sound chime!
+                playDoorbellChime()
+
+                // Update rider messages state
+                const riderName = msg.senderName || "Delivery Partner"
+                setRiderMessages(prev => ({
+                    ...prev,
+                    [orderId]: {
+                        text: msg.text,
+                        time: msg.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        senderName: riderName,
+                        unread: (prev[orderId]?.unread || 0) + 1
+                    }
+                }))
+
+                // If chat modal is already open for this exact room, mark read and do not toast
+                if (chatModalConfigRef.current?.isOpen && 
+                    (chatModalConfigRef.current?.roomId === `order_${orderId}` || chatModalConfigRef.current?.roomId === orderId)) {
+                    axios.post('/api/chat/unread', { roomId: `order_${orderId}`, senderRole: 'deliveryBoy' }).catch(() => {})
+                    return
+                }
+
+                // Show rich interactive toast with 1-click reply!
+                const shortId = orderId.slice(-6).toUpperCase()
+
+                toast((t) => (
+                    <div 
+                        onClick={() => {
+                            toast.dismiss(t.id)
+                            setRiderMessages(prev => {
+                                const updated = { ...prev }
+                                if (updated[orderId]) updated[orderId] = { ...updated[orderId], unread: 0 }
+                                return updated
+                            })
+                            axios.post('/api/chat/unread', { roomId: `order_${orderId}`, senderRole: 'deliveryBoy' }).catch(() => {})
+                            setChatModalConfig({
+                                isOpen: true,
+                                roomId: `order_${orderId}`,
+                                title: `Chat with ${riderName}`,
+                                subtitle: `Order #${shortId} • Delivery Coordination`,
+                                partnerRole: 'deliveryBoy',
+                                partnerName: riderName,
+                                orderId: orderId,
+                                currentUser: { _id: user._id, name: user.name, role: user.role }
+                            })
+                        }}
+                        className="flex items-center gap-3 cursor-pointer py-1.5"
+                    >
+                        <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl shrink-0 shadow-xs border border-blue-200">
+                            🛵
+                        </div>
+                        <div className="overflow-hidden flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                                <p className="text-xs font-black text-gray-900 truncate">
+                                    🛵 {riderName}
+                                </p>
+                                <span className="text-[10px] bg-blue-100 text-blue-800 font-black px-1.5 py-0.5 rounded shrink-0">
+                                    #{shortId}
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-700 font-semibold line-clamp-2 mt-0.5">
+                                "{msg.text}"
+                            </p>
+                            <p className="text-[10px] text-blue-600 font-black mt-1 flex items-center gap-1">
+                                <span>💬 Click to open chat & reply</span>
+                            </p>
+                        </div>
                     </div>
-                    <div className="overflow-hidden">
-                        <p className="text-xs font-bold text-gray-800">
-                            💬 Central Mart Store: <span className="font-normal text-gray-600 truncate">{msg.text}</span>
-                        </p>
-                        <p className="text-[10px] text-green-600 font-bold mt-0.5">Click to view & reply</p>
-                    </div>
-                </div>
-            ), { duration: 6000, position: 'top-right' })
+                ), { 
+                    duration: 9000, 
+                    position: 'top-right',
+                    style: {
+                        background: '#ffffff',
+                        border: '2px solid #3b82f6',
+                        borderRadius: '16px',
+                        boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.25)'
+                    }
+                })
+            }
         }
 
         const handleDispatched = (data: any) => {
@@ -315,6 +468,7 @@ export default function Nav({ user }: { user: IUser }) {
         socket.on('order-delivered', handleDelivered)
         socket.on('send-message', handleIncomingChatForCustomer)
         socket.on('admin-store-message', handleIncomingChatForCustomer)
+        socket.on('order-chat-message', handleIncomingChatForCustomer)
 
         return () => {
             socket.off('order-dispatched', handleDispatched)
@@ -322,6 +476,7 @@ export default function Nav({ user }: { user: IUser }) {
             socket.off('order-delivered', handleDelivered)
             socket.off('send-message', handleIncomingChatForCustomer)
             socket.off('admin-store-message', handleIncomingChatForCustomer)
+            socket.off('order-chat-message', handleIncomingChatForCustomer)
         }
     }, [user])
 
@@ -479,7 +634,8 @@ export default function Nav({ user }: { user: IUser }) {
         ? liveDoorstepAlert
         : null
 
-    const totalNotifCount = (visibleDoorstepAlert ? 1 : 0) + visibleActiveDeliveries.length
+    const totalRiderUnread = Object.values(riderMessages).reduce((sum, item) => sum + (Number(item?.unread) || 0), 0)
+    const totalNotifCount = (visibleDoorstepAlert ? 1 : 0) + visibleActiveDeliveries.length + (totalRiderUnread > 0 && visibleActiveDeliveries.length === 0 && !visibleDoorstepAlert ? 1 : 0)
 
     // Admin sidebar portal
     const sideBar = mounted ? createPortal(
@@ -688,6 +844,7 @@ export default function Nav({ user }: { user: IUser }) {
                                     type="button"
                                     className={`w-9 h-9 rounded-xl flex items-center justify-center transition text-white relative cursor-pointer active:scale-95 ${
                                         visibleDoorstepAlert ? 'bg-red-500 hover:bg-red-600 animate-pulse' :
+                                        totalRiderUnread > 0 ? 'bg-amber-500 hover:bg-amber-600 animate-pulse' :
                                         visibleActiveDeliveries.some((o: any) => o.status === 'out of delivery') ? 'bg-blue-500 hover:bg-blue-600' :
                                         'bg-white/15 hover:bg-white/25'
                                     }`}
@@ -696,14 +853,16 @@ export default function Nav({ user }: { user: IUser }) {
                                 >
                                     {visibleDoorstepAlert ? (
                                         <BellRing size={18} className="animate-bounce text-yellow-200" />
+                                    ) : totalRiderUnread > 0 ? (
+                                        <MessageSquare size={17} className="animate-bounce text-white" />
                                     ) : (
                                         <Bell size={18} className={totalNotifCount > 0 ? "text-yellow-300" : "text-white"} />
                                     )}
 
                                     {/* Alert Badge */}
-                                    {totalNotifCount > 0 && (
+                                    {(totalNotifCount > 0 || totalRiderUnread > 0) && (
                                         <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-green-700 shadow-md animate-pulse">
-                                            {totalNotifCount}
+                                            {totalNotifCount + totalRiderUnread}
                                         </span>
                                     )}
                                 </button>
@@ -858,6 +1017,21 @@ export default function Nav({ user }: { user: IUser }) {
                                                                     </div>
                                                                 )}
 
+                                                                {/* Latest Rider Message if any */}
+                                                                {riderMessages[ord._id]?.text && (
+                                                                    <div className="flex items-center justify-between bg-blue-100/90 px-2.5 py-1.5 rounded-xl border border-blue-200">
+                                                                        <span className="text-[11px] text-blue-900 font-bold truncate flex items-center gap-1">
+                                                                            <span>💬 Rider:</span>
+                                                                            <span className="font-semibold italic truncate">"{riderMessages[ord._id].text}"</span>
+                                                                        </span>
+                                                                        {riderMessages[ord._id]?.unread > 0 && (
+                                                                            <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ml-1">
+                                                                                {riderMessages[ord._id].unread} new
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+
                                                                 <div className="flex items-center justify-between pt-1">
                                                                     <span className="font-black text-green-700 text-xs">₹{ord.totalAmount}</span>
                                                                     <div className="flex items-center gap-1.5">
@@ -865,6 +1039,14 @@ export default function Nav({ user }: { user: IUser }) {
                                                                             type="button"
                                                                             onClick={() => {
                                                                                 setNotifOpen(false)
+                                                                                setRiderMessages(prev => {
+                                                                                    const updated = { ...prev }
+                                                                                    if (updated[ord._id]) {
+                                                                                        updated[ord._id] = { ...updated[ord._id], unread: 0 }
+                                                                                    }
+                                                                                    return updated
+                                                                                })
+                                                                                axios.post('/api/chat/unread', { roomId: `order_${ord._id}`, senderRole: 'deliveryBoy' }).catch(() => {})
                                                                                 setChatModalConfig({
                                                                                     isOpen: true,
                                                                                     roomId: `order_${ord._id}`,
@@ -878,10 +1060,19 @@ export default function Nav({ user }: { user: IUser }) {
                                                                                     currentUser: { _id: user._id, name: user.name, role: user.role }
                                                                                 })
                                                                             }}
-                                                                            className="text-[10px] font-bold text-blue-700 hover:text-blue-900 bg-blue-100/90 hover:bg-blue-200 px-2 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                                                                            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                                                                                riderMessages[ord._id]?.unread > 0
+                                                                                    ? "bg-amber-400 text-blue-950 font-black animate-pulse shadow-xs"
+                                                                                    : "text-blue-700 hover:text-blue-900 bg-blue-100/90 hover:bg-blue-200"
+                                                                            }`}
                                                                         >
                                                                             <MessageSquare size={11} />
                                                                             <span>Chat</span>
+                                                                            {riderMessages[ord._id]?.unread > 0 && (
+                                                                                <span className="bg-red-500 text-white text-[8px] font-black px-1 rounded-full">
+                                                                                    {riderMessages[ord._id].unread}
+                                                                                </span>
+                                                                            )}
                                                                         </button>
                                                                         <Link
                                                                             href={`/user/track-order/${ord._id}`}
@@ -1142,9 +1333,22 @@ export default function Nav({ user }: { user: IUser }) {
                                             <Truck size={18} className="animate-pulse text-white" />
                                         </div>
                                         <div>
-                                            <p className="font-black text-xs">🛵 Groceries Dispatched • Out for Delivery!</p>
+                                            <p className="font-black text-xs flex items-center gap-1.5">
+                                                <span>🛵 Groceries Dispatched • Out for Delivery!</span>
+                                                {riderMessages[outOrder._id]?.unread > 0 && (
+                                                    <span className="bg-amber-400 text-blue-950 text-[9px] font-black px-1.5 py-0.2 rounded-full animate-bounce">
+                                                        New Message
+                                                    </span>
+                                                )}
+                                            </p>
                                             <p className="text-[11px] text-blue-100">
-                                                Order #{outOrder._id.slice(-6).toUpperCase()} is on the way to your door.
+                                                {riderMessages[outOrder._id]?.text ? (
+                                                    <span className="font-bold text-yellow-200">
+                                                        💬 Rider: "{riderMessages[outOrder._id].text}"
+                                                    </span>
+                                                ) : (
+                                                    `Order #${outOrder._id.slice(-6).toUpperCase()} is on the way to your door.`
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -1155,21 +1359,36 @@ export default function Nav({ user }: { user: IUser }) {
                                             </span>
                                         )}
                                         <button
-                                            onClick={() => setChatModalConfig({
-                                                isOpen: true,
-                                                roomId: `order_${outOrder._id}`,
-                                                title: `Chat with ${outOrder.assignedDeliveryBoy?.name || 'Rider'}`,
-                                                subtitle: `Order #${outOrder._id.slice(-6).toUpperCase()} • Out for Delivery`,
-                                                partnerRole: 'deliveryBoy',
-                                                partnerName: outOrder.assignedDeliveryBoy?.name || 'Delivery Partner',
-                                                partnerPhone: outOrder.assignedDeliveryBoy?.mobile,
-                                                orderId: outOrder._id,
-                                                deliveryOtp: outOrder.deliveryOtp,
-                                                currentUser: { _id: user._id, name: user.name, role: user.role }
-                                            })}
-                                            className="text-xs bg-white/20 hover:bg-white/30 text-white font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+                                            onClick={() => {
+                                                setRiderMessages(prev => {
+                                                    const updated = { ...prev }
+                                                    if (updated[outOrder._id]) updated[outOrder._id] = { ...updated[outOrder._id], unread: 0 }
+                                                    return updated
+                                                })
+                                                axios.post('/api/chat/unread', { roomId: `order_${outOrder._id}`, senderRole: 'deliveryBoy' }).catch(() => {})
+                                                setChatModalConfig({
+                                                    isOpen: true,
+                                                    roomId: `order_${outOrder._id}`,
+                                                    title: `Chat with ${outOrder.assignedDeliveryBoy?.name || 'Rider'}`,
+                                                    subtitle: `Order #${outOrder._id.slice(-6).toUpperCase()} • Out for Delivery`,
+                                                    partnerRole: 'deliveryBoy',
+                                                    partnerName: outOrder.assignedDeliveryBoy?.name || 'Delivery Partner',
+                                                    partnerPhone: outOrder.assignedDeliveryBoy?.mobile,
+                                                    orderId: outOrder._id,
+                                                    deliveryOtp: outOrder.deliveryOtp,
+                                                    currentUser: { _id: user._id, name: user.name, role: user.role }
+                                                })
+                                            }}
+                                            className={`text-xs font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer relative ${
+                                                riderMessages[outOrder._id]?.unread > 0
+                                                    ? "bg-amber-400 text-blue-950 font-black hover:bg-amber-300 animate-pulse shadow-md"
+                                                    : "bg-white/20 hover:bg-white/30 text-white"
+                                            }`}
                                         >
                                             <MessageSquare size={13} /> Chat
+                                            {riderMessages[outOrder._id]?.unread > 0 && (
+                                                <span className="w-2 h-2 rounded-full bg-red-600 animate-ping absolute -top-1 -right-1" />
+                                            )}
                                         </button>
                                         <Link
                                             href={`/user/track-order/${outOrder._id}`}
@@ -1276,7 +1495,19 @@ export default function Nav({ user }: { user: IUser }) {
             {chatModalConfig.isOpen && (
                 <ChatModal
                     isOpen={chatModalConfig.isOpen}
-                    onClose={() => setChatModalConfig({ isOpen: false })}
+                    onClose={() => {
+                        if (chatModalConfig.orderId) {
+                            setRiderMessages(prev => {
+                                const updated = { ...prev }
+                                if (updated[chatModalConfig.orderId]) {
+                                    updated[chatModalConfig.orderId] = { ...updated[chatModalConfig.orderId], unread: 0 }
+                                }
+                                return updated
+                            })
+                            axios.post('/api/chat/unread', { roomId: `order_${chatModalConfig.orderId}`, senderRole: 'deliveryBoy' }).catch(() => {})
+                        }
+                        setChatModalConfig({ isOpen: false })
+                    }}
                     roomId={chatModalConfig.roomId}
                     title={chatModalConfig.title}
                     subtitle={chatModalConfig.subtitle}
@@ -1286,7 +1517,19 @@ export default function Nav({ user }: { user: IUser }) {
                     orderId={chatModalConfig.orderId}
                     currentUser={chatModalConfig.currentUser || { _id: user._id, name: user.name, role: user.role }}
                     deliveryOtp={chatModalConfig.deliveryOtp}
-                    onMessagesRead={() => setCustomerUnreadChats(0)}
+                    onMessagesRead={() => {
+                        setCustomerUnreadChats(0)
+                        if (chatModalConfig.orderId) {
+                            setRiderMessages(prev => {
+                                const updated = { ...prev }
+                                if (updated[chatModalConfig.orderId]) {
+                                    updated[chatModalConfig.orderId] = { ...updated[chatModalConfig.orderId], unread: 0 }
+                                }
+                                return updated
+                            })
+                            axios.post('/api/chat/unread', { roomId: `order_${chatModalConfig.orderId}`, senderRole: 'deliveryBoy' }).catch(() => {})
+                        }
+                    }}
                 />
             )}
 

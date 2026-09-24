@@ -11,7 +11,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "roomId is required" }, { status: 400 });
         }
 
-        const messages = await Message.find({ roomId: String(roomId) }).sort({ createdAt: 1 });
+        const cleanId = String(roomId).replace(/^order_/, '');
+        const queryRooms = Array.from(new Set([String(roomId), cleanId, `order_${cleanId}`]));
+        const messages = await Message.find({ roomId: { $in: queryRooms } }).sort({ createdAt: 1 });
 
         return NextResponse.json(messages, { status: 200 });
     } catch (error) {

@@ -19,27 +19,45 @@ function DeliveryChat({ orderId, deliveryBoyId }: props) {
   const [suggestions, setSuggestions] = useState([])
   useEffect(() => {
     const socket = getSocket()
+    const cleanId = orderId.replace(/^order_/, '')
     socket.emit("join-room", orderId)
-    socket.on("send-message", (message) => {
-      if (message.roomId === orderId) {
-        setMessages((prev) => [...prev!, message])
+    socket.emit("join-room", cleanId)
+    socket.emit("join-room", `order_${cleanId}`)
+
+    const handleIncoming = (message: any) => {
+      const msgClean = String(message?.roomId || message?.orderId || '').replace(/^order_/, '')
+      if (message.roomId === orderId || msgClean === cleanId) {
+        setMessages((prev) => {
+          if (prev?.some(m => (m._id && message._id && m._id === message._id) || (m.time === message.time && m.text === message.text))) {
+            return prev
+          }
+          return [...(prev || []), message]
+        })
       }
-
-    })
-
-    return () => {
-      socket.off("send-message")
     }
 
-  }, [])
+    socket.on("send-message", handleIncoming)
+    socket.on("order-chat-message", handleIncoming)
+
+    return () => {
+      socket.off("send-message", handleIncoming)
+      socket.off("order-chat-message", handleIncoming)
+    }
+
+  }, [orderId])
 
   const sendMsg = () => {
     const socket = getSocket()
+    const cleanId = orderId.replace(/^order_/, '')
+    const targetRoom = `order_${cleanId}`
 
     const message = {
-      roomId: orderId,
+      roomId: targetRoom,
+      orderId: cleanId,
       text: newMessage,
       senderId: deliveryBoyId,
+      senderRole: "deliveryBoy",
+      senderName: "Delivery Partner",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit"
