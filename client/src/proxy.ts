@@ -1,42 +1,45 @@
-
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "./auth"
 
-export async function proxy(req:NextRequest){
+export async function proxy(req: NextRequest) {
+    const { pathname } = req.nextUrl
 
-    const {pathname}=req.nextUrl
-   
-    const publicRoutes=["/login","/register","/api/auth","/unauthorized"]
-     if(publicRoutes.some((path)=>pathname.startsWith(path))){
+    // Public routes that anyone (including unauthenticated visitors) can access
+    const isPublic = 
+        pathname === "/" ||
+        pathname.startsWith("/login") ||
+        pathname.startsWith("/register") ||
+        pathname.startsWith("/unauthorized") ||
+        pathname.startsWith("/account-suspended") ||
+        pathname.startsWith("/api/auth") ||
+        pathname.startsWith("/user/cart")
+
+    if (isPublic) {
         return NextResponse.next()
-     }
-const session=await auth()
+    }
 
-if(!session){
-  const loginUrl=new URL("/login",req.url)
-   loginUrl.searchParams.set("callbackUrl",req.url)
-   return NextResponse.redirect(loginUrl)
-}
+    const session = await auth()
 
-const role=session.user?.role
-if(pathname.startsWith("/user") && role!=="user"){
-  return NextResponse.redirect(new URL("/unauthorized",req.url))
-}
-if(pathname.startsWith("/delivery") && role!=="deliveryBoy"){
-  return NextResponse.redirect(new URL("/unauthorized",req.url))
-}
-if(pathname.startsWith("/admin") && role!=="admin"){
-  return NextResponse.redirect(new URL("/unauthorized",req.url))
-}
+    if (!session) {
+        const loginUrl = new URL("/login", req.url)
+        loginUrl.searchParams.set("callbackUrl", req.url)
+        return NextResponse.redirect(loginUrl)
+    }
 
+    const role = session.user?.role
+    if (pathname.startsWith("/user") && role !== "user") {
+        return NextResponse.redirect(new URL("/unauthorized", req.url))
+    }
+    if (pathname.startsWith("/delivery") && role !== "deliveryBoy") {
+        return NextResponse.redirect(new URL("/unauthorized", req.url))
+    }
+    if (pathname.startsWith("/admin") && role !== "admin") {
+        return NextResponse.redirect(new URL("/unauthorized", req.url))
+    }
 
-return NextResponse.next()
-
+    return NextResponse.next()
 }
 
 export const config = {
-  matcher:'/((?!api|_next/static|_next/image|favicon.ico).*)',
+    matcher: '/((?!api|_next/static|_next/image|favicon.ico).*)',
 }
-
-
-// req------middleware------server
