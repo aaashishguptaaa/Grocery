@@ -51,7 +51,19 @@ body {
 .scroll-rail > * { scroll-snap-align: start; }
 
 /* ── Focus ring ── */
-*:focus-visible { outline: 2px solid #16a34a; outline-offset: 2px; border-radius: 0.5rem; }
+button:focus-visible, a:focus-visible { 
+  outline: 2px solid #16a34a; 
+  outline-offset: 2px; 
+  border-radius: 0.5rem; 
+}
+
+/* Prevent unwanted focus rings/boxes inside text inputs */
+input, textarea, select {
+  outline: none;
+}
+input:focus, input:focus-visible, textarea:focus, textarea:focus-visible, select:focus, select:focus-visible {
+  outline: none !important;
+}
 
 /* ── GPU-Accelerated Falling Groceries (Zero-Lag 60fps) ── */
 @keyframes fallNormal {
