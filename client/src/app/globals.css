@@ -58,11 +58,13 @@ button:focus-visible, a:focus-visible {
 }
 
 /* Prevent unwanted focus rings/boxes inside text inputs */
-input, textarea, select {
-  outline: none;
-}
-input:focus, input:focus-visible, textarea:focus, textarea:focus-visible, select:focus, select:focus-visible {
+input, textarea, select,
+input:focus, input:focus-visible, 
+textarea:focus, textarea:focus-visible, 
+select:focus, select:focus-visible {
   outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 /* ── GPU-Accelerated Falling Groceries (Zero-Lag 60fps) ── */

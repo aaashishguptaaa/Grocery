@@ -739,20 +739,21 @@ export default function Nav({ user }: { user: IUser }) {
                     {/* Desktop Search (user only) */}
                     {user.role === "user" && (
                         <form
-                            className='hidden md:flex items-center bg-white rounded-xl px-4 py-2.5 flex-1 max-w-2xl shadow-sm hover:shadow-md focus-within:ring-2 focus-within:ring-green-400 focus-within:border-green-300 relative group transition-all'
+                            className='hidden md:flex items-center bg-white rounded-2xl pl-4 pr-3 h-12 flex-1 max-w-2xl shadow-sm hover:shadow-md focus-within:ring-2 focus-within:ring-green-500 focus-within:border-transparent relative group transition-all'
                             onSubmit={handleSearch}
                         >
-                            <Search className='text-green-600 w-4 h-4 mr-2.5 shrink-0' />
+                            <Search className='text-green-600 w-5 h-5 mr-3 shrink-0' />
                             <input
                                 type="text"
                                 placeholder='Search groceries, fruits, milk...'
-                                className='w-full border-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-gray-800 placeholder-gray-400 text-sm bg-transparent pr-7'
+                                className='w-full h-full border-0 border-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-gray-800 placeholder-gray-400 text-sm font-medium bg-transparent pr-8 shadow-none'
+                                style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                             {search && (
-                                <button type="button" onClick={clearSearch} className="absolute right-3 text-gray-400 hover:text-gray-600 cursor-pointer p-0.5 rounded-full hover:bg-gray-100 transition">
-                                    <X size={15} />
+                                <button type="button" onClick={clearSearch} className="absolute right-3.5 text-gray-400 hover:text-gray-700 cursor-pointer p-1 rounded-full hover:bg-gray-100 transition">
+                                    <X size={16} />
                                 </button>
                             )}
                         </form>
@@ -1249,18 +1250,19 @@ export default function Nav({ user }: { user: IUser }) {
                             className='md:hidden overflow-hidden'
                             onSubmit={handleSearch}
                         >
-                            <div className='flex items-center bg-white rounded-xl px-3 py-2.5 gap-2 focus-within:ring-2 focus-within:ring-green-400 transition-all'>
+                            <div className='flex items-center bg-white rounded-2xl px-3.5 h-11 gap-2.5 focus-within:ring-2 focus-within:ring-green-500 transition-all'>
                                 <Search className='text-green-600 w-4 h-4 shrink-0' />
                                 <input
                                     type="text"
-                                    className='w-full border-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-gray-800 text-sm placeholder-gray-400 bg-transparent'
+                                    className='w-full h-full border-0 border-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-gray-800 text-sm placeholder-gray-400 bg-transparent shadow-none'
+                                    style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
                                     placeholder='Search groceries...'
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     autoFocus
                                 />
-                                {search && <button type="button" onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600 p-0.5"><X size={14} /></button>}
-                                <button type="button" onClick={() => setSearchBarOpen(false)} className='text-gray-400 hover:text-gray-600 p-0.5'><X size={18} /></button>
+                                {search && <button type="button" onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600 p-1"><X size={15} /></button>}
+                                <button type="button" onClick={() => setSearchBarOpen(false)} className='text-gray-400 hover:text-gray-600 p-1'><X size={18} /></button>
                             </div>
                         </motion.form>
                     )}
