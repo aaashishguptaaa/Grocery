@@ -31,7 +31,6 @@ export default function BrandLogo({
                 className={`relative shrink-0 flex items-center justify-center bg-gradient-to-br from-emerald-400 via-green-500 to-emerald-600 text-white shadow-md shadow-green-900/20 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-200 border border-white/20 ${dimensions.box}`}
             >
                 <ShoppingCart size={dimensions.iconSize} className="text-white drop-shadow-xs" strokeWidth={2.5} />
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse border border-green-700"></span>
             </div>
 
             {/* Typography: grocery ⚡ 10 min */}
@@ -41,7 +40,6 @@ export default function BrandLogo({
                         <span className={`font-black tracking-tight ${lightText ? 'text-white' : 'text-gray-900 dark:text-white'} ${dimensions.text}`}>
                             grocery
                         </span>
-                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                     </div>
                     {showTagline && (
                         <span className={`font-black uppercase tracking-widest ${lightText ? 'text-green-200' : 'text-green-700 dark:text-emerald-400'} ${dimensions.badge} mt-0.5`}>
