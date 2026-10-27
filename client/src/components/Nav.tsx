@@ -786,10 +786,10 @@ export default function Nav({ user }: { user: IUser }) {
                     )}
 
                     <div className='ml-auto flex items-center gap-2 sm:gap-3'>
-                        {/* Search button (user only) — visible on all screen sizes */}
+                        {/* Mobile-only search button (hidden on desktop to avoid duplicate search icon next to cart & login) */}
                         {user.role === "user" && (
                             <button
-                                className='flex w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 items-center justify-center text-white transition'
+                                className='md:hidden flex w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 items-center justify-center text-white transition'
                                 onClick={() => setSearchBarOpen(prev => !prev)}
                             >
                                 <Search size={18} />

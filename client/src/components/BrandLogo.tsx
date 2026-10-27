@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import Image from 'next/image'
+import { ShoppingCart } from 'lucide-react'
 
 interface BrandLogoProps {
     size?: 'sm' | 'md' | 'lg'
@@ -19,26 +19,19 @@ export default function BrandLogo({
     className = ''
 }: BrandLogoProps) {
     const dimensions = {
-        sm: { icon: 28, text: 'text-lg', badge: 'text-[9px]' },
-        md: { icon: 36, text: 'text-xl sm:text-2xl', badge: 'text-[10px]' },
-        lg: { icon: 44, text: 'text-2xl sm:text-3xl', badge: 'text-xs' }
+        sm: { box: 'w-7 h-7 rounded-xl', iconSize: 15, text: 'text-lg', badge: 'text-[9px]' },
+        md: { box: 'w-9 h-9 sm:w-10 sm:h-10 rounded-2xl', iconSize: 20, text: 'text-xl sm:text-2xl', badge: 'text-[10px]' },
+        lg: { box: 'w-11 h-11 rounded-2xl', iconSize: 24, text: 'text-2xl sm:text-3xl', badge: 'text-xs' }
     }[size]
 
     return (
         <div className={`inline-flex items-center gap-2.5 group cursor-pointer ${className}`}>
-            {/* 🛒 Fresh Grocery Cart Icon */}
+            {/* 🛒 Fresh Grocery Cart Logo — Native SVG (Zero network request, never breaks or shows error image) */}
             <div 
-                className="relative shrink-0 rounded-2xl overflow-hidden shadow-sm group-hover:scale-105 group-hover:rotate-3 transition-transform duration-200"
-                style={{ width: dimensions.icon, height: dimensions.icon }}
+                className={`relative shrink-0 flex items-center justify-center bg-gradient-to-br from-emerald-400 via-green-500 to-emerald-600 text-white shadow-md shadow-green-900/20 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-200 border border-white/20 ${dimensions.box}`}
             >
-                <Image
-                    src="/grocery-logo.svg"
-                    alt="Grocery"
-                    width={dimensions.icon}
-                    height={dimensions.icon}
-                    className="object-contain w-full h-full"
-                    priority
-                />
+                <ShoppingCart size={dimensions.iconSize} className="text-white drop-shadow-xs" strokeWidth={2.5} />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse border border-green-700"></span>
             </div>
 
             {/* Typography: grocery ⚡ 10 min */}
